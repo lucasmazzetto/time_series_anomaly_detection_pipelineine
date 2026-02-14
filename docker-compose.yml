@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  time_series_anomaly_detection:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app

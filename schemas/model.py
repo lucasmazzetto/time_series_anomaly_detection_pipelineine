@@ -14,3 +14,5 @@ class TimeSeries(BaseModel):
     data: Sequence[DataPoint] = Field(
         ..., description="Ordered list of subsequent measurements."
     )
+
+
