@@ -1,6 +1,7 @@
 from utils.params import load_params
 from schemas.train import TrainData
 from core.trainer import Trainer
+from core.monitor import TrainingMonitor
 
 
 class TrainingManager:
@@ -25,4 +26,5 @@ class TrainingManager:
             raise NotImplementedError("Async training is not implemented.")
         else:
             trainer = Trainer(self.series_id, data)
+            trainer.add_observer(TrainingMonitor())
             trainer.train()
