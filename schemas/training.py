@@ -1,16 +1,27 @@
-from typing import ClassVar, List, Optional
+from typing import List, Optional
 from math import isfinite
 
 from pydantic import BaseModel, field_validator
 from utils.params import load_params
 
-
 class TrainData(BaseModel):
+    """@brief Represents the training payload consumed by the trainer.
+
+    @var values: Sequence of raw metric values supplied as the training set.
+    """
+
     values: List[Optional[float]]
 
     @field_validator('values')
     @classmethod
     def validate_values(cls, v: List[Optional[float]]) -> List[float]:
+        """@brief Rejects invalid training payloads before model updates.
+
+        @param v: Candidate list of floats or ints given from the client.
+        @return: The same list after verifying the required invariants.
+        @raise ValueError: When a validation rule is violated.
+        """
+
         params = load_params()
         min_points = int(params.get("min_training_data_points"))
 
@@ -33,6 +44,13 @@ class TrainData(BaseModel):
 
 
 class TrainResponse(BaseModel):
+    """@brief Structured response outputed after a training attempt.
+
+    @var series_id: Identifier of the series that was targeted.
+    @var message: Summary of the training outcome.
+    @var success: Flag telling if training succeeded.
+    """
+
     series_id: str
     message: str
     success: bool

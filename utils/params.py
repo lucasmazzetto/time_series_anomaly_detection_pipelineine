@@ -3,8 +3,15 @@ from typing import Any, Dict, Optional
 from functools import lru_cache
 import yaml
 
+
 @lru_cache(maxsize=1)
-def load_params(defaults: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def load_params() -> Dict[str, Any]:
+    """@brief Load parameters from the repository configuration.
+
+    @returns A dictionary of values parsed from `config/params.yaml`.
+    @raises FileNotFoundError if `config/params.yaml` is missing.
+    @raises ValueError if the YAML document is invalid.
+    """
     params_path = Path("config/params.yaml").resolve()
 
     if not params_path.exists():
