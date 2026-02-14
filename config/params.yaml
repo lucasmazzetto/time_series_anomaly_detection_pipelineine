@@ -1,1 +1,2 @@
 min_training_data_points: 3
+assync_training: false

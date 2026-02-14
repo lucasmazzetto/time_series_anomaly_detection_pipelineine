@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from schemas.training import TrainData, TrainResponse
+from core.manager import TrainingManager
 
 router = APIRouter()
 
@@ -16,11 +17,11 @@ async def fit(series_id: str, data: TrainData):
     @param data Payload describing training data and settings.
     @return TrainResponse indicating that training started.
     """
-
-    # TODO: send the received training request to the training manager.
+    training_manager = TrainingManager(series_id)
+    training_manager.start_training(data)
 
     return TrainResponse(
         series_id=series_id, 
-        message="Model training started", 
+        message="Model training started.", 
         success=True
     )
