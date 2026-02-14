@@ -1,8 +1,10 @@
 from fastapi.testclient import TestClient
+from utils.timestamp import make_timestamps
 from main import app
 
 
 client = TestClient(app)
+
 
 def test_fit_endpoint():
     """@brief Submit a valid time series to the fit endpoint.
@@ -11,8 +13,11 @@ def test_fit_endpoint():
     alongside a descriptive message.
     """
     series_id = "test_series_001"
+    values = [1.0, 1.2, 1.1, 0.9, 1.0, 1.3]
+
     payload = {
-        "values": [1.0, 1.2, 1.1, 0.9, 1.0, 1.3]
+        "timestamps": make_timestamps(6),
+        "values": values
     }
 
     response = client.post(f"/fit/{series_id}", json=payload)
@@ -31,9 +36,13 @@ def test_fit_endpoint_validation_failure():
     status because the minimum length requirement is not satisfied.
     """
     series_id = "test_series_fail"
+    values = [1.0, 1.2]
+
     payload = {
-        "values": [1.0, 1.2]  # Too few values, should trigger validation error
+        "timestamps": make_timestamps(2),
+        "values": values  # Too few values, should trigger validation error
     }
+    
     response = client.post(f"/fit/{series_id}", json=payload)
     assert response.status_code == 422
 
@@ -45,15 +54,26 @@ def test_fit_endpoint_rejects_invalid_values():
     describing why the value (None or infinite) cannot be converted for training.
     """
     series_id = "test_series_invalid"
+
     # Test with None
-    payload_none = {"values": [1.0, 2.0, None, 4.0]}
+    payload_none = {
+        "timestamps": make_timestamps(4),
+        "values": [1.0, 2.0, None, 4.0]
+    }
+
     response_none = client.post(f"/fit/{series_id}", json=payload_none)
+
     assert response_none.status_code == 422
     assert "None" in response_none.json()["detail"][0]["msg"]
 
     # Test with Infinity (JSON string representation)
-    payload_inf = {"values": [1.0, 2.0, "Infinity", 4.0]}
+    payload_inf = {
+        "timestamps": make_timestamps(4),
+        "values": [1.0, 2.0, "Infinity", 4.0]
+    }
+
     response_inf = client.post(f"/fit/{series_id}", json=payload_inf)
+
     assert response_inf.status_code == 422
     assert "infinite" in response_inf.json()["detail"][0]["msg"]
 
@@ -65,8 +85,14 @@ def test_fit_endpoint_rejects_constant_values():
     should respond with 422 and mention the constant-valued issue in the validation message.
     """
     series_id = "test_series_constant"
-    payload = {"values": [5.0, 5.0, 5.0, 5.0]}
+
+    payload = {
+        "timestamps": make_timestamps(4),
+        "values": [5.0, 5.0, 5.0, 5.0]
+    }
+
     response = client.post(f"/fit/{series_id}", json=payload)
+
     assert response.status_code == 422
     assert "constant" in response.json()["detail"][0]["msg"]
 
@@ -78,7 +104,12 @@ def test_fit_endpoint_rejects_non_numeric_values():
     preventing training on invalid range data.
     """
     series_id = "test_series_non_numeric"
-    payload = {"values": [1.0, 2.0, "invalid", 4.0]}
+    
+    payload = {
+        "timestamps": make_timestamps(4),
+        "values": [1.0, 2.0, "invalid", 4.0]
+    }
+
     response = client.post(f"/fit/{series_id}", json=payload)
     assert response.status_code == 422
 

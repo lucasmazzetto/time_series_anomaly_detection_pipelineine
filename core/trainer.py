@@ -1,4 +1,5 @@
-from schemas.training import TrainData
+from schemas.train import TrainData
+
 
 class Trainer:
     def __init__(self, series_id: str, data: TrainData):

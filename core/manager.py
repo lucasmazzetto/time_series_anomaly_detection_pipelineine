@@ -1,5 +1,5 @@
 from utils.params import load_params
-from schemas.training import TrainData
+from schemas.train import TrainData
 from core.trainer import Trainer
 
 

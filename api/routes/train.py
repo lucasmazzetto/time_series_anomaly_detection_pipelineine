@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from schemas.training import TrainData, TrainResponse
+from schemas.train import TrainData, TrainResponse
 from core.manager import TrainingManager
 
 router = APIRouter()
