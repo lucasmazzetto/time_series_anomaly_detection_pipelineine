@@ -219,7 +219,4 @@ __marimo__/
 .pytest_cache/
 
 # Persisted models / artifacts
-data/models/*.pkl
-
-# SQLite database
-data/*.db
+data/

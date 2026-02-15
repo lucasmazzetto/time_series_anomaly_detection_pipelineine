@@ -1,16 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Callable, Optional
 import numpy as np
-from schemas.univariate_time_series import TimeSeries, DataPoint
+from app.core.schema import TimeSeries, DataPoint, ModelState
 
 
 class BaseModel(ABC):
-
     @abstractmethod
-    def fit(self, data):
+    def fit(self, data, callback: Optional[Callable[[Any], None]] = None):
         """@brief Fit the model on training data.
 
         @param data Training dataset.
+        @param callback Optional callable invoked during training with partial model updates.
         @return None.
         """
         pass
@@ -23,18 +23,17 @@ class BaseModel(ABC):
         @return Prediction result.
         """
         pass
-
+    
     @abstractmethod
-    def save(self) -> Dict[str, Any]:
+    def save(self) -> ModelState:
         """@brief Return serializable model state (params + metrics).
 
         @return Dictionary with model parameters and metrics.
         """
         pass
 
-    @classmethod
     @abstractmethod
-    def load(cls, state: Dict[str, Any]) -> "BaseModel":
+    def load(self, state: ModelState) -> None:
         """@brief Restore model from serialized state.
         
         @param state Dictionary with model parameters and metrics.
@@ -43,12 +42,12 @@ class BaseModel(ABC):
         pass
 
 
-class AnomalyDetectionModel(BaseModel):
-
-    def fit(self, data: TimeSeries) -> "AnomalyDetectionModel":
+class SimpleModel(BaseModel):
+    def fit(self, data: TimeSeries, callback: Optional[Callable[[Any], None]] = None) -> None:
         """@brief Fit the model on training data.
 
         @param data Training data containing the values stream.
+        @param callback 
         @return The fitted model instance.
         """
         values_stream = np.fromiter(
@@ -56,9 +55,14 @@ class AnomalyDetectionModel(BaseModel):
             dtype=float,
             count=len(data.data),
         )
+
         self.mean = float(np.mean(values_stream))
         self.std = float(np.std(values_stream))
-        return self
+
+        state = self.save()
+
+        if callback:
+            callback(state)
 
     def predict(self, data_point: DataPoint) -> bool:
         """@brief Predict whether a data point is an anomaly.
@@ -69,29 +73,27 @@ class AnomalyDetectionModel(BaseModel):
         """
         if not hasattr(self, "mean") or not hasattr(self, "std"):
             raise ValueError("Model must be trained before prediction.")
+        
         return data_point.value > self.mean + 3 * self.std
 
-    def save(self) -> Dict[str, Any]:
+    def save(self) -> ModelState:
         """@brief Serialize the model state.
 
         @return Dictionary with model type and parameters.
         """
-        return {
-            "model": "anomaly_detection_model",
-            "parameters": {
+        return ModelState(
+            model="anomaly_detection_model",
+            parameters={
                 "mean": self.mean,
                 "std": self.std,
-            }
-        }
+            },
+        )
 
-    @classmethod
-    def load(cls, state: Dict[str, Any]) -> "AnomalyDetectionModel":
+    def load(self, state: ModelState) -> None:
         """@brief Load a model instance from serialized state.
 
         @param state Serialized model state.
         @return A reconstructed model instance.
         """
-        model = cls()
-        model.mean = state["parameters"]["mean"]
-        model.std = state["parameters"]["std"]
-        return model
+        self.mean = state.parameters["mean"]
+        self.std = state.parameters["std"]

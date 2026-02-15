@@ -1,8 +1,8 @@
 from math import isfinite
-from typing import Sequence
+from typing import Sequence, Any
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from utils.params import load_params
+from app.utils.params import load_params
 
 
 class DataPoint(BaseModel):
@@ -104,3 +104,13 @@ class TimeSeries(BaseModel):
                 raise ValueError("Input list cannot contain constant values only.")
 
         return self
+
+
+class ModelState(BaseModel):
+    model: str = Field(..., description="Model identifier.")
+    parameters: dict[str, Any] = Field(
+        ..., description="Serializable model parameters."
+    )
+    metrics: dict[str, Any] | None = Field(
+        default=None, description="Optional training metrics."
+    )
