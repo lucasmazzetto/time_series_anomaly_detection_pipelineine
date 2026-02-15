@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from functools import lru_cache
 import yaml
 
@@ -12,10 +12,16 @@ def load_params() -> Dict[str, Any]:
     @raises FileNotFoundError if `config/params.yaml` is missing.
     @raises ValueError if the YAML document is invalid.
     """
-    params_path = Path("config/params.yaml").resolve()
+    package_root = Path(__file__).resolve().parents[1]
+    candidates = (
+        Path("config/params.yaml").resolve(),
+        package_root / "config/params.yaml",
+    )
+    params_path = next((path for path in candidates if path.exists()), None)
 
-    if not params_path.exists():
-        raise FileNotFoundError(f"Parameters file not found: {params_path}")
+    if params_path is None:
+        searched = ", ".join(str(path) for path in candidates)
+        raise FileNotFoundError(f"Parameters file not found. Searched: {searched}")
 
     with params_path.open("r", encoding="utf-8") as f:
         try:

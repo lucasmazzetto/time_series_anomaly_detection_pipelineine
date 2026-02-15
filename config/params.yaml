@@ -1,2 +1,6 @@
 min_training_data_points: 3
 assync_training: false
+model_artifacts_path: data/models
+database: SQLite
+database_url: sqlite:///data/training.db
+database_echo: false
