@@ -1,7 +1,7 @@
 from typing import List
 from schemas.univariate_time_series import TimeSeries
 from core.monitor import TrainingObserver
-from core.models.anomaly_detection_model import AnomalyDetectionModel
+from core.models import AnomalyDetectionModel
 
 
 class Trainer:
@@ -33,7 +33,6 @@ class Trainer:
 
     def train(self):
         """@brief Train the model and notify observers with saved metrics."""
-        print(f"Training model for series {self.series_id}...")
         self.model.fit(self.data)
         metrics = self.model.save()
         self._notify(metrics)
