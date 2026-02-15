@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.schema import TrainData, TrainResponse
 from app.db import get_session
-from app.core.schema import TimeSeries, DataPoint
+from app.core.schema import TimeSeries
 from app.services.anomaly_detection_service import AnomalyDetectionService
 
 
@@ -13,12 +13,7 @@ router = APIRouter(tags=["train"])
 def train(
     series_id: str, payload: TrainData, session: Session = Depends(get_session)
 ) -> TrainResponse:
-    time_series = TimeSeries(
-        data=[
-            DataPoint(timestamp=timestamp, value=value)
-            for timestamp, value in zip(payload.timestamps, payload.values)
-        ]
-    )
+    time_series = payload.to_time_series()
 
     service = AnomalyDetectionService(session)
     success = service.train(series_id, time_series)

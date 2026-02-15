@@ -3,6 +3,7 @@ from math import isfinite
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.utils.params import load_params
+from app.core.schema import TimeSeries, DataPoint
 
 
 class TrainData(BaseModel):
@@ -60,6 +61,14 @@ class TrainData(BaseModel):
             raise ValueError("Input list cannot contain constant values only.")
 
         return self
+
+    def to_time_series(self) -> TimeSeries:
+        return TimeSeries(
+            data=[
+                DataPoint(timestamp=timestamp, value=value)
+                for timestamp, value in zip(self.timestamps, self.values)
+            ]
+        )
 
 
 class TrainResponse(BaseModel):

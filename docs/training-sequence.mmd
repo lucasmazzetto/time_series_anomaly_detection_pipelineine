@@ -1,0 +1,51 @@
+sequenceDiagram
+    autonumber
+    actor Client
+    participant API as FastAPI /fit/{series_id}
+    participant ASchema as TrainData Validator
+    participant CoreSchema as TimeSeries/DataPoint
+    participant Service as AnomalyDetectionService
+    participant Trainer as AnomalyDetectionTrainer
+    participant Model as SimpleModel
+    participant Store as LocalStorage
+    participant ORM as AnomalyDetectionRecord
+    participant DB as PostgreSQL
+    participant FS as Local Filesystem
+
+    Client->>API: POST /fit/{series_id}\n{timestamps, values}
+    API->>ASchema: Validate payload
+    ASchema-->>API: TrainData
+    API->>CoreSchema: Build TimeSeries(DataPoint[])
+    CoreSchema-->>API: TimeSeries
+    API->>Service: train(series_id, time_series)
+
+    Service->>Trainer: train(time_series)
+    Trainer->>Model: fit(data)
+    Model-->>Trainer: ModelState(mean, std)
+    Trainer-->>Service: ModelState
+
+    Service->>ORM: get_latest_version(session, series_id)
+    ORM->>DB: SELECT max(version) ...
+    DB-->>ORM: latest_version
+    ORM-->>Service: latest_version
+
+    Service->>Store: save_state(series_id, version, state)
+    Store->>FS: Write .pkl model artifact
+    FS-->>Store: model_path
+    Store-->>Service: model_path
+
+    Service->>Store: save_data(series_id, version, payload)
+    Store->>FS: Write .json training data
+    FS-->>Store: data_path
+    Store-->>Service: data_path
+
+    Service->>ORM: build(...)
+    ORM-->>Service: AnomalyDetectionRecord
+    Service->>ORM: save(session, record)
+    ORM->>DB: INSERT + COMMIT
+    DB-->>ORM: committed
+    ORM-->>Service: success
+
+    Service-->>API: True/False
+    API-->>Client: TrainResponse
+
