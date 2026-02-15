@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import object_session
 
 from sqlalchemy import Column, DateTime, Integer, String
 
 from app.db import Base
+from app.database.series_version_record import SeriesVersionRecord
 
 
 class AnomalyDetectionRecord(Base):
@@ -20,21 +21,40 @@ class AnomalyDetectionRecord(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False)
 
     def touch(self) -> None:
+        """
+        @brief Update the in-memory `updated_at` timestamp.
+
+        @return None
+        """
         self.updated_at = datetime.now(timezone.utc)
 
     @staticmethod
-    def _latest_timestamp() -> datetime:
+    def _timestamp() -> datetime:
+        """
+        @brief Provide a UTC timestamp for record creation/update.
+
+        @return A timezone-aware UTC datetime.
+        """
         return datetime.now(timezone.utc)
 
     @classmethod
     def build(
         cls,
         series_id: str,
-        version: int,
-        model_path: str,
-        data_path: str,
+        version: int | None = None,
+        model_path: str | None = None,
+        data_path: str | None = None,
     ) -> "AnomalyDetectionRecord":
-        now = cls._latest_timestamp()
+        """
+        @brief Build a new record with consistent timestamps.
+
+        @param series_id The series identifier for the model.
+        @param version The version to persist; if None, it will be assigned on save.
+        @param model_path The persisted model path, if already known.
+        @param data_path The persisted data path, if already known.
+        @return A new AnomalyDetectionRecord instance (not yet persisted).
+        """
+        now = cls._timestamp()
         return cls(
             series_id=series_id,
             version=version,
@@ -45,19 +65,42 @@ class AnomalyDetectionRecord(Base):
         )
 
     @staticmethod
-    def next_version_from(latest: int | None) -> int:
-        if latest is None:
-            return 1
-        return int(latest) + 1
+    def save(session: Session | AsyncSession, model: "AnomalyDetectionRecord") -> int:
+        """
+        @brief Persist a record and return its version.
 
-    @classmethod
-    def get_latest_version(
-        cls, session: Session | AsyncSession, series_id: str
-    ) -> int | None:
-        stmt = select(func.max(cls.version)).where(cls.series_id == series_id)
-        return session.execute(stmt).scalar()
-
-    @staticmethod
-    def save(session: Session | AsyncSession, model: "AnomalyDetectionRecord") -> None:
+        @description If the version is missing, it is assigned atomically via
+        `SeriesVersionRecord` to avoid race conditions under concurrent inserts.
+        
+        @param session Active SQLAlchemy session for the transaction.
+        @param model The record to be saved.
+        @return The version stored for this record.
+        """
+        if model.version is None:
+            model.version = SeriesVersionRecord.next_version(
+                session, model.series_id
+            )
         session.add(model)
+        session.commit()
+        session.refresh(model)
+        return int(model.version)
+
+    def update(self, *, model_path: str | None, data_path: str | None) -> None:
+        """
+        @brief Update storage paths and persist changes.
+
+        @param model_path New model path to store.
+        @param data_path New data path to store.
+        @return None
+        """
+        self.model_path = model_path
+        self.data_path = data_path
+        self.touch()
+        
+        session = object_session(self)
+
+        if session is None:
+            raise RuntimeError("AnomalyDetectionRecord is not attached to a session")
+        
+        session.add(self)
         session.commit()

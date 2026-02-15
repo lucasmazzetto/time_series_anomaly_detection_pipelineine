@@ -7,6 +7,7 @@ from alembic import context
 
 from app.db import Base
 from app.database import anomaly_detection_record as _model  # noqa: F401
+from app.database import series_version_record as _series_version  # noqa: F401
 
 config = context.config
 

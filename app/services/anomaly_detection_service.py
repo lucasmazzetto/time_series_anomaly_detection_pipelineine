@@ -21,14 +21,12 @@ class AnomalyDetectionService(BaseAnomalyDetectionService):
         self.storage = LocalStorage()
 
     def train(self, series_id: str, payload: TimeSeries) -> bool:
+        version = None
+        model_path = None
+        data_path = None
+    
         try:
             state = self.trainer.train(payload)
-
-            latest = AnomalyDetectionRecord.get_latest_version(self._session, series_id)
-            version = AnomalyDetectionRecord.next_version_from(latest)
-
-            model_path = self.storage.save_state(series_id, version, state)
-            data_path = self.storage.save_data(series_id, version, payload)
 
             model = AnomalyDetectionRecord.build(
                 series_id=series_id,
@@ -36,9 +34,18 @@ class AnomalyDetectionService(BaseAnomalyDetectionService):
                 model_path=model_path,
                 data_path=data_path,
             )
-            AnomalyDetectionRecord.save(self._session, model)
+
+            version = AnomalyDetectionRecord.save(self._session, model)
+
+            model_path = self.storage.save_state(series_id, version, state)
+            data_path = self.storage.save_data(series_id, version, payload)
+
+            model.update(model_path=model_path, data_path=data_path)
 
             return True
+        
         except Exception:
+            
             self._session.rollback()
+
             return False
