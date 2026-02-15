@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from api.routes import train
+from api import train
 
 app = FastAPI()
 

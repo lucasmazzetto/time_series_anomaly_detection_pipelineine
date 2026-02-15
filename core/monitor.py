@@ -1,17 +1,18 @@
 from abc import ABC, abstractmethod
 import sys
 from typing import Any, Dict
-from schemas.train import TrainData
+from schemas.univariate_time_series import TimeSeries
 
 
 class TrainingObserver(ABC):
     @abstractmethod
-    def update(self, series_id: str, data: TrainData, metrics: Dict[str, Any]) -> None:
+    def update(
+        self, series_id: str, data: TimeSeries, metrics: Dict[str, Any]
+    ) -> None:
         pass
 
 
 class TrainingMonitor(TrainingObserver):
-    def update(self, series_id: str, data: TrainData, metrics: Dict[str, Any]) -> None:
+    def update(self, series_id: str, data: TimeSeries, metrics: Dict[str, Any]) -> None:
         # TODO: store metrics in a database for later analysis.
-
-        print(f"{series_id} {metrics}\n")
+        sys.stdout.write(f"{series_id} {metrics}\n")

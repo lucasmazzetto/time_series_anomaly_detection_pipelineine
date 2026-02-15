@@ -1,24 +1,27 @@
 import numpy as np
 from typing import Dict, Any
-from schemas.train import TrainData
-from schemas.inference import PredictData
+from schemas.univariate_time_series import TimeSeries, DataPoint
 from core.models.base_model import BaseModel
 
 
 class AnomalyDetectionModel(BaseModel):
 
-    def fit(self, data: TrainData) -> "AnomalyDetectionModel":
+    def fit(self, data: TimeSeries) -> "AnomalyDetectionModel":
         """@brief Fit the model on training data.
 
         @param data Training data containing the values stream.
         @return The fitted model instance.
         """
-        values_stream = data.values
+        values_stream = np.fromiter(
+            (point.value for point in data.data),
+            dtype=float,
+            count=len(data.data),
+        )
         self.mean = float(np.mean(values_stream))
         self.std = float(np.std(values_stream))
         return self
 
-    def predict(self, data_point: PredictData) -> bool:
+    def predict(self, data_point: DataPoint) -> bool:
         """@brief Predict whether a data point is an anomaly.
 
         @param data_point The data point to evaluate.

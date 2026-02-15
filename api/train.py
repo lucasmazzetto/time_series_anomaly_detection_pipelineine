@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from schemas.train import TrainData, TrainResponse
+from schemas.response import TrainResponse
+from schemas.univariate_time_series import TimeSeries
 from core.manager import TrainingManager
 
 router = APIRouter()
@@ -10,7 +11,7 @@ router = APIRouter()
     tags=["Training"],
     operation_id="training_fit"
 )
-async def fit(series_id: str, data: TrainData):
+async def fit(series_id: str, data: TimeSeries):
     """@brief Initiates training for the specified time series.
 
     @param series_id Identifier of the time series to train.

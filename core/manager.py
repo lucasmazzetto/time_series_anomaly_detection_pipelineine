@@ -1,5 +1,5 @@
 from utils.params import load_params
-from schemas.train import TrainData
+from schemas.univariate_time_series import TimeSeries
 from core.trainer import Trainer
 from core.monitor import TrainingMonitor
 
@@ -15,7 +15,7 @@ class TrainingManager:
         params = load_params()
         self.assync_training = params.get("assync_training")
 
-    def start_training(self, data: TrainData):
+    def start_training(self, data: TimeSeries):
         """
         @brief Starts training for the provided series data.
 

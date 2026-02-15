@@ -1,11 +1,11 @@
 from typing import List
-from schemas.train import TrainData
+from schemas.univariate_time_series import TimeSeries
 from core.monitor import TrainingObserver
 from core.models.anomaly_detection_model import AnomalyDetectionModel
 
 
 class Trainer:
-    def __init__(self, series_id: str, data: TrainData):
+    def __init__(self, series_id: str, data: TimeSeries):
         """@brief Initialize a trainer for a single time series.
 
         @param series_id Identifier of the time series to train on.
