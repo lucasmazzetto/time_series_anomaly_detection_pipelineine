@@ -16,6 +16,13 @@ class Base(DeclarativeBase):
 
 
 def get_session():
+    """@brief Yield a database session and ensure it is closed.
+
+    @description Creates a SQLAlchemy session for the request lifecycle and
+    guarantees cleanup after use.
+
+    @return Generator that yields an active SQLAlchemy session.
+    """
     session = SessionLocal()
     try:
         yield session

@@ -15,10 +15,24 @@ from app.core.schema import ModelState, TimeSeries
 class Storage(ABC):
     @abstractmethod
     def save_state(self, series_id: str, version: int, state: ModelState) -> str:
+        """@brief Persist a serialized model state.
+
+        @param series_id Identifier for the time series.
+        @param version Model version to persist.
+        @param state Serialized model state payload.
+        @return Filesystem path where the state was stored.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def save_data(self, series_id: str, version: int, payload: TimeSeries) -> str:
+        """@brief Persist the training data used for the model.
+
+        @param series_id Identifier for the time series.
+        @param version Model version to persist.
+        @param payload Training data payload.
+        @return Filesystem path where the data was stored.
+        """
         raise NotImplementedError
 
 
@@ -30,6 +44,14 @@ class LocalStorage(Storage):
         env_keys: tuple[str, ...],
         fallback: str,
     ) -> Path:
+        """@brief Resolve a storage folder from params, env vars, or fallback.
+
+        @param params Parameters dictionary to check first.
+        @param param_keys Keys to search in params.
+        @param env_keys Environment variables to search next.
+        @param fallback Default folder if nothing else is set.
+        @return Resolved folder path.
+        """
         for key in param_keys:
             value = params.get(key)
             if value:
@@ -43,6 +65,13 @@ class LocalStorage(Storage):
         return Path(fallback)
 
     def save_state(self, series_id: str, version: int, state: ModelState) -> str:
+        """@brief Save model state locally as a pickle file.
+
+        @param series_id Identifier for the time series.
+        @param version Model version to persist.
+        @param state Serialized model state payload.
+        @return Filesystem path where the state was stored.
+        """
         params = get_params()
         folder = self._resolve_folder(
             params=params,
@@ -60,6 +89,13 @@ class LocalStorage(Storage):
         return str(file_path)
 
     def save_data(self, series_id: str, version: int, payload: TimeSeries) -> str:
+        """@brief Save training data locally as a JSON file.
+
+        @param series_id Identifier for the time series.
+        @param version Model version to persist.
+        @param payload Training data payload.
+        @return Filesystem path where the data was stored.
+        """
         params = get_params()
         folder = self._resolve_folder(
             params=params,

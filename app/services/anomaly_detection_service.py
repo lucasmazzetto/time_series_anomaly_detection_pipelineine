@@ -9,11 +9,23 @@ from app.core.schema import TimeSeries
 
 class AnomalyDetectionTrainingService:
     def __init__(self, session: Session, trainer: Trainer, storage: Storage) -> None:
+        """@brief Initialize training service with persistence dependencies.
+
+        @param session Active database session.
+        @param trainer Trainer implementation for model fitting.
+        @param storage Storage backend for artifacts.
+        """
         self._session = session
         self.trainer = trainer
         self.storage = storage
 
     def train(self, series_id: str, payload: TimeSeries) -> bool:
+        """@brief Train a model and persist its record and artifacts.
+
+        @param series_id Identifier of the series to train.
+        @param payload Training data payload.
+        @return True if training and persistence succeeded, otherwise False.
+        """
         version = None
         model_path = None
         data_path = None

@@ -28,7 +28,7 @@ class BaseModel(ABC):
     def save(self) -> ModelState:
         """@brief Return serializable model state (params + metrics).
 
-        @return Dictionary with model parameters and metrics.
+        @return ModelState instance with model parameters and metrics.
         """
         pass
 
@@ -37,7 +37,7 @@ class BaseModel(ABC):
         """@brief Restore model from serialized state.
         
         @param state Dictionary with model parameters and metrics.
-        @return Restored model instance.
+        @return None.
         """
         pass
 
@@ -47,8 +47,8 @@ class SimpleModel(BaseModel):
         """@brief Fit the model on training data.
 
         @param data Training data containing the values stream.
-        @param callback 
-        @return The fitted model instance.
+        @param callback Optional callable invoked with the saved model state.
+        @return None.
         """
         values_stream = np.fromiter(
             (point.value for point in data.data),
@@ -79,7 +79,7 @@ class SimpleModel(BaseModel):
     def save(self) -> ModelState:
         """@brief Serialize the model state.
 
-        @return Dictionary with model type and parameters.
+        @return ModelState instance with model type and parameters.
         """
         return ModelState(
             model="anomaly_detection_model",
@@ -93,7 +93,7 @@ class SimpleModel(BaseModel):
         """@brief Load a model instance from serialized state.
 
         @param state Serialized model state.
-        @return A reconstructed model instance.
+        @return None.
         """
         self.mean = state.parameters["mean"]
         self.std = state.parameters["std"]

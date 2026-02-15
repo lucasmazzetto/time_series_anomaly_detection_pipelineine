@@ -15,6 +15,13 @@ router = APIRouter(tags=["train"])
 def train(
     series_id: str, payload: TrainData, session: Session = Depends(get_session)
 ) -> TrainResponse:
+    """@brief Start training for a series and persist its artifacts.
+
+    @param series_id Identifier of the series to train.
+    @param payload Training payload containing timestamps and values.
+    @param session Active database session for persistence.
+    @return Training response payload describing the outcome.
+    """
     time_series = payload.to_time_series()
 
     service = AnomalyDetectionTrainingService(
