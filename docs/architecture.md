@@ -11,8 +11,10 @@ This document maps how data flows through the project when training a model via 
 - `Service` (`app/services/anomaly_detection_service.py`): coordinates training + persistence.
 - `Trainer` (`app/core/trainer.py`): delegates fitting to a model implementation.
 - `Model` (`app/core/model.py`): computes `mean` and `std` and serializes model state.
-- `Local storage repository` (`app/repositories/local_storage.py`): writes model/data artifacts to disk.
-- `Database model + helpers` (`app/database/anomaly_detection_record.py`): version lookup, record creation, commit.
+- `Local storage repository` (`app/repositories/storage.py`): writes model/data artifacts to disk.
+- `Database models + helpers`:
+- `app/database/anomaly_detection_record.py`: record creation, updates, commit.
+- `app/database/series_version_record.py`: atomic version assignment per series.
 - `DB session factory` (`app/db.py`): SQLAlchemy engine/session lifecycle.
 - `PostgreSQL` (via `docker-compose.yml` + migrations): stores model metadata and artifact paths.
 
@@ -31,8 +33,9 @@ This document maps how data flows through the project when training a model via 
 - `app/core/schema.py`
 
 4. Infrastructure Layer:
-- `app/repositories/local_storage.py`
+- `app/repositories/storage.py`
 - `app/database/anomaly_detection_record.py`
+- `app/database/series_version_record.py`
 - `app/db.py`
 - `migrations/*`, `alembic.ini`, `docker-compose.yml`
 
@@ -42,11 +45,11 @@ This document maps how data flows through the project when training a model via 
 3. Route maps payload into `TimeSeries(data=[DataPoint(...)])`.
 4. `AnomalyDetectionService.train()` calls trainer/model `fit`.
 5. `SimpleModel.fit()` computes `mean` and `std` and emits `ModelState`.
-6. Service fetches current series latest version from DB and computes next version.
+6. Service builds a DB record and persists it; the version is assigned atomically if missing.
 7. Service writes:
 - model state (`.pkl`) under `./data/models/<series_id>/...`
 - input training payload (`.json`) under `./data/data/<series_id>/...`
-8. Service builds and commits `anomaly_detection_models` record with artifact paths.
+8. Service updates the DB record with `model_path` and `data_path`.
 9. Route returns `TrainResponse { series_id, success, message }`.
 
 ## Sequence Diagram
@@ -62,6 +65,7 @@ sequenceDiagram
     participant Model as SimpleModel
     participant Store as LocalStorage
     participant ORM as AnomalyDetectionRecord
+    participant Version as SeriesVersionRecord
     participant DB as PostgreSQL
     participant FS as Local Filesystem
 
@@ -77,10 +81,14 @@ sequenceDiagram
     Model-->>Trainer: ModelState(mean, std)
     Trainer-->>Service: ModelState
 
-    Service->>ORM: get_latest_version(session, series_id)
-    ORM->>DB: SELECT max(version) ...
-    DB-->>ORM: latest_version
-    ORM-->>Service: latest_version
+    Service->>ORM: save(session, record)
+    ORM->>Version: next_version(session, series_id)
+    Version->>DB: INSERT ... ON CONFLICT ... RETURNING
+    DB-->>Version: next_version
+    Version-->>ORM: next_version
+    ORM->>DB: INSERT + COMMIT
+    DB-->>ORM: committed
+    ORM-->>Service: version
 
     Service->>Store: save_state(series_id, version, state)
     Store->>FS: Write .pkl model artifact
@@ -92,12 +100,10 @@ sequenceDiagram
     FS-->>Store: data_path
     Store-->>Service: data_path
 
-    Service->>ORM: build(...)
-    ORM-->>Service: AnomalyDetectionRecord
-    Service->>ORM: save(session, record)
-    ORM->>DB: INSERT + COMMIT
+    Service->>ORM: update(model_path, data_path)
+    ORM->>DB: UPDATE + COMMIT
     DB-->>ORM: committed
-    ORM-->>Service: success
+    ORM-->>Service: updated
 
     Service-->>API: True/False
     API-->>Client: TrainResponse
@@ -126,4 +132,3 @@ sequenceDiagram
 ## Failure Behavior
 - `AnomalyDetectionService.train()` catches broad exceptions, rolls back the DB session, and returns `False`.
 - API always responds with `TrainResponse`; `success=false` maps to `"Training failed."`.
-

@@ -9,6 +9,7 @@ sequenceDiagram
     participant Model as SimpleModel
     participant Store as LocalStorage
     participant ORM as AnomalyDetectionRecord
+    participant Version as SeriesVersionRecord
     participant DB as PostgreSQL
     participant FS as Local Filesystem
 
@@ -24,10 +25,14 @@ sequenceDiagram
     Model-->>Trainer: ModelState(mean, std)
     Trainer-->>Service: ModelState
 
-    Service->>ORM: get_latest_version(session, series_id)
-    ORM->>DB: SELECT max(version) ...
-    DB-->>ORM: latest_version
-    ORM-->>Service: latest_version
+    Service->>ORM: save(session, record)
+    ORM->>Version: next_version(session, series_id)
+    Version->>DB: INSERT ... ON CONFLICT ... RETURNING
+    DB-->>Version: next_version
+    Version-->>ORM: next_version
+    ORM->>DB: INSERT + COMMIT
+    DB-->>ORM: committed
+    ORM-->>Service: version
 
     Service->>Store: save_state(series_id, version, state)
     Store->>FS: Write .pkl model artifact
@@ -39,13 +44,10 @@ sequenceDiagram
     FS-->>Store: data_path
     Store-->>Service: data_path
 
-    Service->>ORM: build(...)
-    ORM-->>Service: AnomalyDetectionRecord
-    Service->>ORM: save(session, record)
-    ORM->>DB: INSERT + COMMIT
+    Service->>ORM: update(model_path, data_path)
+    ORM->>DB: UPDATE + COMMIT
     DB-->>ORM: committed
-    ORM-->>Service: success
+    ORM-->>Service: updated
 
     Service-->>API: True/False
     API-->>Client: TrainResponse
-
