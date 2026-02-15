@@ -42,6 +42,7 @@ class BaseModel(ABC):
         """
         pass
 
+
 class AnomalyDetectionModel(BaseModel):
 
     def fit(self, data: TimeSeries) -> "AnomalyDetectionModel":
