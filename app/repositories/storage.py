@@ -1,14 +1,28 @@
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
 import json
 import os
 import pickle
 from pathlib import Path
 from typing import Any
 
-from app.core.schema import TimeSeries, ModelState
 from app.utils.params import load_params as get_params
+from app.core.schema import ModelState, TimeSeries
 
 
-class LocalStorage:
+class Storage(ABC):
+    @abstractmethod
+    def save_state(self, series_id: str, version: int, state: ModelState) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def save_data(self, series_id: str, version: int, payload: TimeSeries) -> str:
+        raise NotImplementedError
+
+
+class LocalStorage(Storage):
     @staticmethod
     def _resolve_folder(
         params: dict[str, Any],

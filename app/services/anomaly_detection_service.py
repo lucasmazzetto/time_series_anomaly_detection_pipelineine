@@ -1,24 +1,17 @@
-from app.core.trainer import AnomalyDetectionTrainer
-from app.core.model import SimpleModel
-from app.repositories.local_storage import LocalStorage
+from app.core.trainer import Trainer
+from app.repositories.storage import Storage
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.database.anomaly_detection_record import AnomalyDetectionRecord
 from app.core.schema import TimeSeries
 
 
-class BaseAnomalyDetectionService:
-    def __init__(self, session: Session | AsyncSession) -> None:
+class AnomalyDetectionTrainingService:
+    def __init__(self, session: Session, trainer: Trainer, storage: Storage) -> None:
         self._session = session
-    
-
-class AnomalyDetectionService(BaseAnomalyDetectionService):
-    def __init__(self, session: Session) -> None:
-        super().__init__(session)
-        self.trainer = AnomalyDetectionTrainer(model=SimpleModel)
-        self.storage = LocalStorage()
+        self.trainer = trainer
+        self.storage = storage
 
     def train(self, series_id: str, payload: TimeSeries) -> bool:
         version = None

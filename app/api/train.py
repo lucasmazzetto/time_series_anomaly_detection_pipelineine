@@ -3,9 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.api.schema import TrainData, TrainResponse
 from app.db import get_session
-from app.core.schema import TimeSeries
-from app.services.anomaly_detection_service import AnomalyDetectionService
+from app.services.anomaly_detection_service import AnomalyDetectionTrainingService
 
+from app.core.trainer import AnomalyDetectionTrainer
+from app.core.model import SimpleModel
+from app.repositories.storage import LocalStorage
 
 router = APIRouter(tags=["train"])
 
@@ -15,7 +17,12 @@ def train(
 ) -> TrainResponse:
     time_series = payload.to_time_series()
 
-    service = AnomalyDetectionService(session)
+    service = AnomalyDetectionTrainingService(
+        session=session, 
+        trainer=AnomalyDetectionTrainer(model=SimpleModel()), 
+        storage=LocalStorage()
+    )
+    
     success = service.train(series_id, time_series)
 
     message = "Training failed."
