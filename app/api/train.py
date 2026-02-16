@@ -6,8 +6,8 @@ from app.services.train_service import TrainService
 from app.schemas import TrainData, TrainResponse
 
 from app.core.trainer import AnomalyDetectionTrainer
-from app.core.model import SimpleModel
-from app.repositories.storage import LocalStorage
+from app.core.simple_model import SimpleModel
+from app.repositories.local_storage import LocalStorage
 
 router = APIRouter(tags=["train"])
 

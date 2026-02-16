@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas import DataPoint, ModelState, TimeSeries
-from app.repositories.storage import LocalStorage
+from app.repositories.local_storage import LocalStorage
 
 
 def _sample_series() -> TimeSeries:

@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional
 from app.schemas import TimeSeries, ModelState
-from app.core.model import BaseModel
+from app.core.model import Model
 
 
 class Trainer(ABC):
 
-    def __init__(self, model: BaseModel, callback: Optional[Callable[[Any], None]] = None):
+    def __init__(self, model: Model, callback: Optional[Callable[[Any], None]] = None):
         """@brief Initialize the trainer with a model and optional callback.
 
         @param model Model class used to instantiate the trainer's model.
@@ -27,7 +27,7 @@ class Trainer(ABC):
 
 class AnomalyDetectionTrainer(Trainer):
 
-    def __init__(self, model: BaseModel, callback: Optional[Callable[[Any], None]] = None):
+    def __init__(self, model: Model, callback: Optional[Callable[[Any], None]] = None):
         """@brief Initialize a trainer for a single time series.
 
         @param model Model class or factory used to instantiate the trainer's model.

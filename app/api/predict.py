@@ -3,9 +3,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.core.model import SimpleModel
+from app.core.simple_model import SimpleModel
 from app.db import get_session
-from app.repositories.storage import LocalStorage
+from app.repositories.local_storage import LocalStorage
 from app.schemas import PredictData, PredictVersion
 from app.services.predict_service import PredictService
 from app.schemas import PredictResponse
