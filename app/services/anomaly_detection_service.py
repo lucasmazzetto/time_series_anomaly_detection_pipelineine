@@ -5,8 +5,8 @@ from app.repositories.storage import Storage
 from sqlalchemy.orm import Session
 
 from app.database.anomaly_detection_record import AnomalyDetectionRecord
-from app.schemas import DataPoint, TimeSeries, TrainData
-from app.services.schema import PredictResponse
+from app.schemas import DataPoint, PredictData, TimeSeries, TrainData
+from app.schemas import PredictResponse
 
 
 class AnomalyDetectionTrainingService:
@@ -133,14 +133,30 @@ class AnomalyDetectionPredictionService:
                 detail=str(exc),
             ) from exc
 
-    def predict(self, series_id: str, version: int, payload: DataPoint) -> PredictResponse:
+    @staticmethod
+    def _to_data_point(payload: PredictData | DataPoint) -> DataPoint:
+        """@brief Convert prediction payload into validated DataPoint."""
+        try:
+            if isinstance(payload, PredictData):
+                return payload.to_data_point()
+            return payload
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=[{"loc": ["body"], "msg": str(exc), "type": "value_error"}],
+            ) from exc
+
+    def predict(
+        self, series_id: str, version: int, payload: PredictData | DataPoint
+    ) -> PredictResponse:
         """@brief Predict anomaly status for a single data point.
 
         @param series_id Identifier of the series to predict for.
         @param version Model version identifier to use.
-        @param payload Input data point for prediction.
+        @param payload Input prediction payload (raw API model or DataPoint).
         @return Prediction response containing anomaly flag and resolved version.
         """
+        data_point = self._to_data_point(payload)
         self._validate_predict_inputs(series_id, version)
         model_data = self._get_model_data(series_id, version)
 
@@ -158,7 +174,7 @@ class AnomalyDetectionPredictionService:
         try:
             state = self.storage.load_state(model_path)
             self.model.load(state)
-            prediction = bool(self.model.predict(payload))
+            prediction = bool(self.model.predict(data_point))
         except FileNotFoundError as exc:
             # Artifact path exists in DB but the file is missing on disk
             raise HTTPException(

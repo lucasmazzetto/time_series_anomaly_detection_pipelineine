@@ -8,7 +8,7 @@ from app.db import get_session
 from app.repositories.storage import LocalStorage
 from app.schemas import PredictData, PredictVersion
 from app.services.anomaly_detection_service import AnomalyDetectionPredictionService
-from app.services.schema import PredictResponse
+from app.schemas import PredictResponse
 
 router = APIRouter(tags=["Prediction"])
 
@@ -37,7 +37,4 @@ def predict(
     )
 
     version_int = version.to_int()
-
-    data_point = payload.to_data_point()
-    
-    return service.predict(series_id, version_int, data_point)
+    return service.predict(series_id, version_int, payload)

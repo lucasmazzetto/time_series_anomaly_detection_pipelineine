@@ -8,7 +8,7 @@ from app.services.anomaly_detection_service import (
     AnomalyDetectionPredictionService,
     AnomalyDetectionTrainingService,
 )
-from app.services.schema import PredictResponse
+from app.schemas import PredictResponse
 
 
 def _sample_series() -> TimeSeries:

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.db import get_session
 from app.main import app
-from app.services.schema import PredictResponse
+from app.schemas import PredictResponse
 
 
 client = TestClient(app)
@@ -46,7 +46,7 @@ def test_predict_endpoint_accepts_prefixed_version_and_sanitizes():
     called_series_id, called_version, called_payload = predict_mock.call_args[0]
     assert called_series_id == series_id
     assert called_version == 12
-    assert called_payload.timestamp == 1_700_000_000
+    assert called_payload.timestamp == "1700000000"
     assert called_payload.value == 10.5
 
 
