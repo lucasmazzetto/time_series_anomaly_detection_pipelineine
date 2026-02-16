@@ -17,7 +17,7 @@ router = APIRouter(tags=["Prediction"])
 def predict(
     series_id: str,
     payload: PredictData,
-    version: Annotated[PredictVersion, Query()],
+    version: Annotated[PredictVersion, Query()] = PredictVersion(version="0"),
     session: Session = Depends(get_session),
 ) -> PredictResponse:
     """@brief Predict anomaly status for a single data point.

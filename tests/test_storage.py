@@ -1,6 +1,9 @@
 import json
 import pickle
 
+import pytest
+from pydantic import ValidationError
+
 from app.core.schema import DataPoint, ModelState, TimeSeries
 from app.repositories.storage import LocalStorage
 
@@ -64,3 +67,44 @@ def test_local_storage_saves_data_to_disk(tmp_path, monkeypatch):
         saved = json.load(file_obj)
 
     assert saved == payload.model_dump(mode="json")
+
+
+def test_local_storage_loads_state_from_disk(tmp_path):
+    """@brief Verify load_state restores a serialized model state payload.
+
+    @details Ensures the method reads pickle content and validates it as
+    `ModelState` before returning.
+    """
+    state = ModelState(
+        model="anomaly_detection_model",
+        parameters={"mean": 2.0, "std": 0.5},
+        metrics={"samples": 10},
+    )
+    saved_path = tmp_path / "model_state.pkl"
+
+    with saved_path.open("wb") as file_obj:
+        pickle.dump(state.model_dump(mode="json"), file_obj)
+
+    storage = LocalStorage()
+    loaded = storage.load_state(str(saved_path))
+
+    assert isinstance(loaded, ModelState)
+    assert loaded == state
+
+
+def test_local_storage_load_state_rejects_invalid_payload(tmp_path):
+    """@brief Verify load_state validates payload shape and types.
+
+    @details Ensures malformed pickle content fails with Pydantic validation
+    instead of returning a partially invalid state object.
+    """
+    saved_path = tmp_path / "invalid_model_state.pkl"
+    invalid_payload = {"model": "anomaly_detection_model"}  # Missing parameters
+
+    with saved_path.open("wb") as file_obj:
+        pickle.dump(invalid_payload, file_obj)
+
+    storage = LocalStorage()
+
+    with pytest.raises(ValidationError):
+        storage.load_state(str(saved_path))

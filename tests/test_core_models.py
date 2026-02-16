@@ -1,9 +1,3 @@
-"""@file test_core_models.py
-@brief Tests for core model implementations.
-
-@details Covers SimpleModel training, persistence, and prediction behavior.
-"""
-
 import pytest
 
 from app.core.model import SimpleModel
