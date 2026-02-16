@@ -3,10 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.schema import PredictData, PredictVersion
 from app.core.model import SimpleModel
 from app.db import get_session
 from app.repositories.storage import LocalStorage
+from app.schemas import PredictData, PredictVersion
 from app.services.anomaly_detection_service import AnomalyDetectionPredictionService
 from app.services.schema import PredictResponse
 

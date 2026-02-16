@@ -1,7 +1,7 @@
 import pytest
 
 from app.core.model import SimpleModel
-from app.core.schema import DataPoint, ModelState, TimeSeries
+from app.schemas import DataPoint, ModelState, TimeSeries
 
 
 def _sample_series() -> TimeSeries:

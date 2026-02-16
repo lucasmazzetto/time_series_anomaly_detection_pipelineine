@@ -4,7 +4,7 @@ import pickle
 import pytest
 from pydantic import ValidationError
 
-from app.core.schema import DataPoint, ModelState, TimeSeries
+from app.schemas import DataPoint, ModelState, TimeSeries
 from app.repositories.storage import LocalStorage
 
 

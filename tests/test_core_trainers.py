@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.core.model import SimpleModel
-from app.core.schema import DataPoint, ModelState, TimeSeries
+from app.schemas import DataPoint, ModelState, TimeSeries
 from app.core.trainer import AnomalyDetectionTrainer
 
 

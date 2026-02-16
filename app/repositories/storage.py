@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from app.utils.params import load_params as get_params
-from app.core.schema import ModelState, TimeSeries
+from app.schemas import ModelState, TimeSeries
 
 
 class Storage(ABC):

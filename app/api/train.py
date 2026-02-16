@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.schema import TrainData, TrainResponse
 from app.db import get_session
 from app.services.anomaly_detection_service import AnomalyDetectionTrainingService
+from app.schemas import TrainData, TrainResponse
 
 from app.core.trainer import AnomalyDetectionTrainer
 from app.core.model import SimpleModel
@@ -22,15 +22,13 @@ def train(
     @param session Active database session for persistence.
     @return Training response payload describing the outcome.
     """
-    time_series = payload.to_time_series()
-
     service = AnomalyDetectionTrainingService(
         session=session, 
         trainer=AnomalyDetectionTrainer(model=SimpleModel()), 
         storage=LocalStorage()
     )
     
-    success = service.train(series_id, time_series)
+    success = service.train(series_id, payload)
 
     message = "Training failed."
 

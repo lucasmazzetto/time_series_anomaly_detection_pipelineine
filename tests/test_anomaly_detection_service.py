@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from app.core.schema import DataPoint, ModelState, TimeSeries
+from app.schemas import DataPoint, ModelState, TimeSeries
 from app.services.anomaly_detection_service import (
     AnomalyDetectionPredictionService,
     AnomalyDetectionTrainingService,

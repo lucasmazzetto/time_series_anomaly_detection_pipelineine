@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional
-from app.core.schema import TimeSeries, ModelState
+from app.schemas import TimeSeries, ModelState
 from app.core.model import BaseModel
 
 
