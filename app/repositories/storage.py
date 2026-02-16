@@ -35,6 +35,15 @@ class Storage(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def load_state(self, model_path: str) -> ModelState:
+        """@brief Load a serialized model state from disk.
+
+        @param model_path Filesystem path to the persisted model state.
+        @return Deserialized model state payload.
+        """
+        raise NotImplementedError
+
 
 class LocalStorage(Storage):
     @staticmethod
@@ -111,3 +120,15 @@ class LocalStorage(Storage):
             json.dump(payload.model_dump(mode="json"), file_obj)
 
         return str(file_path)
+
+    def load_state(self, model_path: str) -> ModelState:
+        """@brief Load model state from a pickle file.
+
+        @param model_path Filesystem path to the persisted model state.
+        @return Deserialized model state payload.
+        """
+        file_path = Path(model_path)
+        with file_path.open("rb") as file_obj:
+            raw_state = pickle.load(file_obj)
+
+        return ModelState.model_validate(raw_state)
