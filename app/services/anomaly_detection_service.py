@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from app.core.trainer import Trainer
 from app.repositories.storage import Storage
 
@@ -5,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database.anomaly_detection_record import AnomalyDetectionRecord
 from app.core.schema import DataPoint, TimeSeries
+from app.services.schema import PredictResponse
 
 
 class AnomalyDetectionTrainingService:
@@ -68,35 +70,92 @@ class AnomalyDetectionPredictionService:
         self.model = model
         self.storage = storage
 
-    def predict(self, series_id: str, version: int, payload: DataPoint) -> int:
+    @staticmethod
+    def _validate_predict_inputs(series_id: str, version: int) -> None:
+        """@brief Validate user inputs required by prediction.
+
+        @param series_id Identifier of the series to predict for.
+        @param version Model version identifier to use.
+        @return None.
+        """
+        if not series_id.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="series_id must be a non-empty string.",
+            )
+
+        if version < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="version must be greater than or equal to 0.",
+            )
+
+    def _get_model_data(self, series_id: str, version: int) -> dict[str, object]:
+        """@brief Retrieve model metadata for prediction.
+
+        @param series_id Identifier of the series to predict for.
+        @param version Model version identifier to use (0 means latest).
+        @return Serialized model metadata dictionary.
+        """
+        try:
+            # If `version == 0` means "use latest model version"
+            if version == 0:
+                return AnomalyDetectionRecord.get_last_model(
+                    self._session, series_id
+                )
+
+            return AnomalyDetectionRecord.get_model_version(
+                self._session, series_id, version
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(exc),
+            ) from exc
+
+    def predict(self, series_id: str, version: int, payload: DataPoint) -> PredictResponse:
         """@brief Predict anomaly status for a single data point.
 
         @param series_id Identifier of the series to predict for.
         @param version Model version identifier to use.
         @param payload Input data point for prediction.
-        @return Resolved model version used for prediction.
+        @return Prediction response containing anomaly flag and resolved version.
         """
-        if version == 0:
-            model_data = AnomalyDetectionRecord.get_last_model(
-                self._session, series_id
-            )
-        else:
-            model_data = AnomalyDetectionRecord.get_model_version(
-                self._session, series_id, version
-            )
+        self._validate_predict_inputs(series_id, version)
+        model_data = self._get_model_data(series_id, version)
 
         model_path = model_data.get("model_path")
 
         if model_path is None:
-            raise ValueError(
-                f"Model path is missing for series_id '{series_id}' "
-                f"and version '{model_data['version']}'."
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=(
+                    f"Model path is missing for series_id '{series_id}' "
+                    f"and version '{model_data['version']}'."
+                ),
             )
 
-        state = self.storage.load_state(model_path)
-        
-        self.model.load(state)
+        try:
+            state = self.storage.load_state(model_path)
+            self.model.load(state)
+            prediction = bool(self.model.predict(payload))
+        except FileNotFoundError as exc:
+            # Artifact path exists in DB but the file is missing on disk
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Model artifact was not found at path '{model_path}'.",
+            ) from exc
+        except HTTPException:
+            # Preserve explicit HTTP errors raised by lower layers
+            raise
+        except Exception as exc:
+            # Map any unexpected runtime failure to a generic server error
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Unexpected error while predicting anomaly.",
+            ) from exc
 
-        prediction = self.model.predict(payload)
-
-        return prediction
+        return PredictResponse(
+            anomaly=prediction,
+            model_version=str(model_data["version"]),
+        )

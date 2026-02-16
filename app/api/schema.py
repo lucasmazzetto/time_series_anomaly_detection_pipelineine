@@ -1,4 +1,5 @@
 from math import isfinite
+import re
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -167,12 +168,9 @@ class PredictVersion(BaseModel):
         if isinstance(version, bool):
             raise ValueError("Version must be a string or integer-like value.")
 
+        # Keep only ASCII digits to neutralize querystring noise/injection payloads.
         value = str(version).strip()
-        if not value:
-            return "0"
-
-        digits_only = "".join(char for char in value if char.isdigit())
-        
+        digits_only = re.sub(r"[^0-9]", "", value)
         if not digits_only:
             raise ValueError("Version must contain at least one digit.")
 
@@ -184,13 +182,3 @@ class PredictVersion(BaseModel):
         @return Integer model version.
         """
         return int(self.version)
-
-
-class PredictResponse(BaseModel):
-    """@brief Structured response outputed after a prediction attempt.
-
-    @var anomaly: Flag indicating whether the point is anomalous.
-    @var model_version: Version identifier of the model used for prediction.
-    """
-    anomaly: bool
-    model_version: str
