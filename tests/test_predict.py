@@ -35,7 +35,7 @@ def test_predict_endpoint_accepts_prefixed_version_and_sanitizes():
     payload = {"timestamp": "1700000000", "value": 10.5}
 
     with patch(
-        "app.api.predict.AnomalyDetectionPredictionService.predict",
+        "app.api.predict.PredictService.predict",
         return_value=PredictResponse(anomaly=True, model_version="12"),
     ) as predict_mock:
         response = client.post(f"/predict/{series_id}?version=v12", json=payload)
@@ -60,7 +60,7 @@ def test_predict_endpoint_defaults_version_to_zero():
     payload = {"timestamp": "1700000001", "value": 8.0}
 
     with patch(
-        "app.api.predict.AnomalyDetectionPredictionService.predict",
+        "app.api.predict.PredictService.predict",
         return_value=PredictResponse(anomaly=False, model_version="5"),
     ) as predict_mock:
         response = client.post(f"/predict/{series_id}", json=payload)
@@ -82,7 +82,7 @@ def test_predict_endpoint_rejects_non_numeric_version():
     payload = {"timestamp": "1700000002", "value": 7.5}
 
     with patch(
-        "app.api.predict.AnomalyDetectionPredictionService.predict"
+        "app.api.predict.PredictService.predict"
     ) as predict_mock:
         response = client.post(f"/predict/{series_id}?version=batata", json=payload)
 

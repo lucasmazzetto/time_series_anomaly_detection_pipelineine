@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.db import get_session
 from app.main import app
+from app.schemas import TrainResponse
 
 
 client = TestClient(app)
@@ -50,7 +51,12 @@ def test_fit_endpoint():
     }
 
     with patch(
-        "app.api.train.AnomalyDetectionTrainingService.train", return_value=True
+        "app.api.train.TrainService.train",
+        return_value=TrainResponse(
+            series_id=series_id,
+            message="Training successfully started.",
+            success=True,
+        ),
     ):
         response = client.post(f"/fit/{series_id}", json=payload)
     

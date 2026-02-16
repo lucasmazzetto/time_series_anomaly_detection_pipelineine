@@ -12,7 +12,7 @@ class TimeSeries(BaseModel):
     @details Used by training request conversion (`app/schemas/train_data.py`),
     model/trainer contracts (`app/core/model.py`, `app/core/trainer.py`),
     storage (`app/repositories/storage.py`), and training service flows
-    (`app/services/anomaly_detection_service.py`).
+    (`app/services/train_service.py`).
 
     @note Validation rules:
     base validation enforces non-empty, minimum 2 points and strictly

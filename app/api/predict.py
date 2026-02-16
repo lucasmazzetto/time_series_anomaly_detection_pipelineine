@@ -7,7 +7,7 @@ from app.core.model import SimpleModel
 from app.db import get_session
 from app.repositories.storage import LocalStorage
 from app.schemas import PredictData, PredictVersion
-from app.services.anomaly_detection_service import AnomalyDetectionPredictionService
+from app.services.predict_service import PredictService
 from app.schemas import PredictResponse
 
 router = APIRouter(tags=["Prediction"])
@@ -30,7 +30,7 @@ def predict(
     @param session Active database session for future model lookup.
     @return Prediction response containing anomaly flag and model version.
     """
-    service = AnomalyDetectionPredictionService(
+    service = PredictService(
         session=session,
         model=SimpleModel(),
         storage=LocalStorage(),

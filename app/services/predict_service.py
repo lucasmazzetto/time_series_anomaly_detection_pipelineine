@@ -1,84 +1,12 @@
 from fastapi import HTTPException, status
-from app.core.trainer import Trainer
-from app.repositories.storage import Storage
-
 from sqlalchemy.orm import Session
 
 from app.database.anomaly_detection_record import AnomalyDetectionRecord
-from app.schemas import DataPoint, PredictData, TimeSeries, TrainData
-from app.schemas import PredictResponse
+from app.repositories.storage import Storage
+from app.schemas import DataPoint, PredictData, PredictResponse
 
 
-class AnomalyDetectionTrainingService:
-    def __init__(self, session: Session, trainer: Trainer, storage: Storage) -> None:
-        """@brief Initialize training service with persistence dependencies.
-
-        @param session Active database session.
-        @param trainer Trainer implementation for model fitting.
-        @param storage Storage backend for artifacts.
-        """
-        self._session = session
-        self.trainer = trainer
-        self.storage = storage
-
-    @staticmethod
-    def _to_time_series(payload: TrainData | TimeSeries) -> TimeSeries:
-        """@brief Convert incoming training payload to validated TimeSeries.
-
-        @param payload Training payload from API schema or domain schema.
-        @return Validated TimeSeries ready for model training.
-        @throws HTTPException If payload fails preflight validation.
-        """
-        try:
-            if isinstance(payload, TrainData):
-                return payload.to_time_series()
-            return payload.validate_for_training()
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=[{"loc": ["body"], "msg": str(exc), "type": "value_error"}],
-            ) from exc
-
-    def train(self, series_id: str, payload: TrainData | TimeSeries) -> bool:
-        """@brief Train a model and persist its record and artifacts.
-
-        @param series_id Identifier of the series to train.
-        @param payload Training data payload (raw API model or TimeSeries).
-        @return True if training and persistence succeeded, otherwise False.
-        """
-        time_series = self._to_time_series(payload)
-
-        version = None
-        model_path = None
-        data_path = None
-    
-        try:
-            state = self.trainer.train(time_series)
-
-            model_record = AnomalyDetectionRecord.build(
-                series_id=series_id,
-                version=version,
-                model_path=model_path,
-                data_path=data_path,
-            )
-
-            version = AnomalyDetectionRecord.save(self._session, model_record)
-
-            model_path = self.storage.save_state(series_id, version, state)
-            data_path = self.storage.save_data(series_id, version, time_series)
-
-            model_record.update(model_path=model_path, data_path=data_path)
-
-            return True
-        
-        except Exception:
-            
-            self._session.rollback()
-
-            return False
-
-
-class AnomalyDetectionPredictionService:
+class PredictService:
     def __init__(self, session: Session, model: object, storage: Storage) -> None:
         """@brief Initialize prediction service with dependencies.
 
@@ -118,11 +46,8 @@ class AnomalyDetectionPredictionService:
         @return Serialized model metadata dictionary.
         """
         try:
-            # If `version == 0` means "use latest model version"
             if version == 0:
-                return AnomalyDetectionRecord.get_last_model(
-                    self._session, series_id
-                )
+                return AnomalyDetectionRecord.get_last_model(self._session, series_id)
 
             return AnomalyDetectionRecord.get_model_version(
                 self._session, series_id, version
@@ -136,15 +61,12 @@ class AnomalyDetectionPredictionService:
     @staticmethod
     def _to_data_point(payload: PredictData | DataPoint) -> DataPoint:
         """@brief Convert prediction payload into validated DataPoint."""
-        try:
-            if isinstance(payload, PredictData):
-                return payload.to_data_point()
-            return payload
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=[{"loc": ["body"], "msg": str(exc), "type": "value_error"}],
-            ) from exc
+        if isinstance(payload, PredictData):
+            # API payload needs conversion (timestamp str -> int) into domain model.
+            return payload.to_data_point()
+
+        # Already a DataPoint: Pydantic validation already happened at creation time.
+        return payload
 
     def predict(
         self, series_id: str, version: int, payload: PredictData | DataPoint
@@ -156,12 +78,18 @@ class AnomalyDetectionPredictionService:
         @param payload Input prediction payload (raw API model or DataPoint).
         @return Prediction response containing anomaly flag and resolved version.
         """
-        data_point = self._to_data_point(payload)
+        try:
+            data_point = self._to_data_point(payload)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=[{"loc": ["body"], "msg": str(exc), "type": "value_error"}],
+            ) from exc
+
         self._validate_predict_inputs(series_id, version)
         model_data = self._get_model_data(series_id, version)
 
         model_path = model_data.get("model_path")
-
         if model_path is None:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -176,16 +104,13 @@ class AnomalyDetectionPredictionService:
             self.model.load(state)
             prediction = bool(self.model.predict(data_point))
         except FileNotFoundError as exc:
-            # Artifact path exists in DB but the file is missing on disk
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Model artifact was not found at path '{model_path}'.",
             ) from exc
         except HTTPException:
-            # Preserve explicit HTTP errors raised by lower layers
             raise
         except Exception as exc:
-            # Map any unexpected runtime failure to a generic server error
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Unexpected error while predicting anomaly.",

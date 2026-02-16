@@ -9,7 +9,7 @@ class DataPoint(BaseModel):
 
     @details Used by `TimeSeries` (`app/schemas/time_series.py`), core model
     and trainer layers (`app/core/model.py`, `app/core/trainer.py`), services
-    (`app/services/anomaly_detection_service.py`) and API adapters
+    (`app/services/train_service.py`, `app/services/predict_service.py`) and API adapters
     (`app/schemas/predict_data.py`, `app/schemas/train_data.py`).
 
     @note Validation rules:
