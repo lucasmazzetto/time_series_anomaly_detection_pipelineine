@@ -1,9 +1,3 @@
-"""@file test_core_trainers.py
-@brief Tests for core trainer implementations.
-
-@details Covers AnomalyDetectionTrainer training behavior and callbacks.
-"""
-
 from unittest.mock import MagicMock
 
 import pytest

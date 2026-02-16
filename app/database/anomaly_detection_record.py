@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
@@ -19,14 +20,6 @@ class AnomalyDetectionRecord(Base):
     data_path = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False)
-
-    def touch(self) -> None:
-        """
-        @brief Update the in-memory `updated_at` timestamp.
-
-        @return None
-        """
-        self.updated_at = datetime.now(timezone.utc)
 
     @staticmethod
     def _timestamp() -> datetime:
@@ -85,6 +78,80 @@ class AnomalyDetectionRecord(Base):
         session.refresh(model)
         return int(model.version)
 
+    @staticmethod
+    def get_last_model(
+        session: Session | AsyncSession, series_id: str
+    ) -> dict[str, Any]:
+        """
+        @brief Retrieve the latest persisted model row for a series.
+
+        @param session Active SQLAlchemy session for the query.
+        @param series_id The series identifier.
+        @return Serialized dictionary for the latest model row.
+        """
+        model = (
+            session.query(AnomalyDetectionRecord)
+            .filter(AnomalyDetectionRecord.series_id == series_id)
+            .order_by(AnomalyDetectionRecord.version.desc())
+            .first()
+        )
+
+        if model is None:
+            raise ValueError(f"No model found for series_id '{series_id}'.")
+
+        return model.to_dict()
+
+    @staticmethod
+    def get_model_version(
+        session: Session | AsyncSession, series_id: str, version: int
+    ) -> dict[str, Any]:
+        """
+        @brief Retrieve a specific persisted model row for a series/version.
+
+        @param session Active SQLAlchemy session for the query.
+        @param series_id The series identifier.
+        @param version The desired model version.
+        @return Serialized dictionary for the requested model row.
+        """
+        model = (
+            session.query(AnomalyDetectionRecord)
+            .filter(
+                AnomalyDetectionRecord.series_id == series_id,
+                AnomalyDetectionRecord.version == version,
+            )
+            .first()
+        )
+
+        if model is None:
+            raise ValueError(
+                f"Model version '{version}' not found for series_id '{series_id}'."
+            )
+
+        return model.to_dict()
+    
+    def touch(self) -> None:
+        """
+        @brief Update the in-memory `updated_at` timestamp.
+
+        @return None
+        """
+        self.updated_at = datetime.now(timezone.utc)
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        @brief Serialize the record into a dictionary.
+
+        @return Dictionary representation of the database row.
+        """
+        return {
+            "series_id": self.series_id,
+            "version": int(self.version),
+            "model_path": self.model_path,
+            "data_path": self.data_path,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+    
     def update(self, *, model_path: str | None, data_path: str | None) -> None:
         """
         @brief Update storage paths and persist changes.
