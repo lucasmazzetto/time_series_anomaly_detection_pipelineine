@@ -1,13 +1,3 @@
-"""@file latency.py
-
-@brief HTTP latency middleware and in-memory metrics cache.
-
-@details
-Tracks request latency for `/fit/{series_id}` and `/predict/{series_id}`.
-Metrics are grouped by endpoint type (`train`, `predict`) and kept in a
-process-local dictionary with thread-safe updates.
-"""
-
 import math
 import threading
 import time
@@ -91,15 +81,18 @@ async def track_request_latency(request: Request, call_next):
     @return Response produced by downstream handlers.
 
     @details
-    The latency is always recorded, including failure scenarios, because updates
-    happen inside the `finally` block.
+    Latency metrics are recorded only for successful (`2xx`) responses.
+    Error responses and raised exceptions are intentionally excluded from
+    cache aggregation.
     """
     start_time = time.perf_counter()
-    try:
-        return await call_next(request)
-    finally:
+    response = await call_next(request)
+
+    if 200 <= response.status_code < 300:
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
         _update_latency_cache(request.url.path, elapsed_ms)
+        
+    return response
 
 
 def get_latency_cache() -> dict[str, dict[str, Any]]:

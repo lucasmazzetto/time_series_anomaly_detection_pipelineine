@@ -118,3 +118,34 @@ def test_latency_cache_updates_p95_with_nearest_rank():
     cache = get_latency_cache()
     assert cache["train"]["count"] == 10
     assert cache["train"]["p95_ms"] == pytest.approx(100.0)
+
+
+def test_latency_cache_ignores_non_2xx_responses():
+    series_id = "latency_only_success"
+    valid_payload = {
+        "timestamps": [1700000200, 1700000201, 1700000202],
+        "values": [3.0, 3.1, 3.2],
+    }
+    invalid_payload = {
+        "timestamps": [1700000300, 1700000301],
+        "values": [4.0, 4.1],
+    }
+
+    with patch(
+        "app.api.train.TrainService.train",
+        return_value=TrainResponse(
+            series_id=series_id,
+            message="Training successfully started.",
+            success=True,
+        ),
+    ):
+        success_response = client.post(f"/fit/{series_id}", json=valid_payload)
+
+    error_response = client.post(f"/fit/{series_id}", json=invalid_payload)
+
+    assert success_response.status_code == 200
+    assert error_response.status_code == 422
+
+    cache = get_latency_cache()
+    assert cache["train"]["count"] == 1
+    assert len(cache["train"]["latencies_ms"]) == 1
