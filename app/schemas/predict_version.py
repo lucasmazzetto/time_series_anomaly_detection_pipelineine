@@ -1,14 +1,27 @@
 import re
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
-class PredictVersion(BaseModel):
+class Version(BaseModel):
     
     version: str = Field(
         default="0",
         description="Model version in formats like 1, v1, or V1.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def coerce_scalar_input(cls, data: object) -> object:
+        """@brief Accept scalar query values and coerce into model shape.
+
+        @details FastAPI may pass a raw query scalar (e.g. `version=0`) for
+        this model-typed parameter. This hook normalizes scalar input into
+        `{\"version\": <value>}` while preserving dict/object inputs.
+        """
+        if isinstance(data, (str, int)) and not isinstance(data, bool):
+            return {"version": str(data)}
+        return data
 
     @field_validator("version")
     @classmethod

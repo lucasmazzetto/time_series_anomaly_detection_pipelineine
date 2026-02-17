@@ -149,7 +149,7 @@ sequenceDiagram
 - `TrainData`: non-negative integer timestamps, finite numeric values, same length arrays
 - `TimeSeries`: at least 2 points, strictly increasing timestamps
 - `PredictData`: timestamp is non-empty digits-only string, value is finite numeric
-- `PredictVersion`: accepts digits with optional `v`/`V` prefix
+- `Version`: accepts digits with optional `v`/`V` prefix
 
 ## Persistence and Versioning
 

@@ -8,7 +8,7 @@ from app.db import get_session
 from app.repositories.local_storage import LocalStorage
 from app.schemas.predict_data import PredictData
 from app.schemas.predict_response import PredictResponse
-from app.schemas.predict_version import PredictVersion
+from app.schemas.predict_version import Version
 from app.schemas.series_id import SeriesId
 from app.services.predict_service import PredictService
 
@@ -19,7 +19,7 @@ router = APIRouter(tags=["Prediction"])
 def predict(
     series_id: Annotated[SeriesId, Path()],
     payload: PredictData,
-    version: Annotated[PredictVersion, Query()] = PredictVersion(version="0"),
+    version: Annotated[Version, Query()] = Version(version="0"),
     session: Session = Depends(get_session),
 ) -> PredictResponse:
     """@brief Predict anomaly status for a single data point.

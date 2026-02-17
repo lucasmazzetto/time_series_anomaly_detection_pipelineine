@@ -98,3 +98,17 @@ class LocalStorage(Storage):
             raw_state = json.load(file_obj)
 
         return ModelState.model_validate(raw_state)
+
+    def load_data(self, data_path: str) -> TimeSeries:
+        """@brief Load training data from a JSON file.
+
+        @param data_path Filesystem path to the persisted training data.
+        @return Deserialized training data payload.
+        @throws FileNotFoundError If the target file does not exist.
+        @throws ValidationError If file contents do not match `TimeSeries`.
+        """
+        file_path = Path(data_path)
+        with file_path.open("r", encoding="utf-8") as file_obj:
+            raw_data = json.load(file_obj)
+
+        return TimeSeries.model_validate(raw_data)
