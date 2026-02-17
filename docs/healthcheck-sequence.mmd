@@ -1,0 +1,22 @@
+sequenceDiagram
+    autonumber
+    actor Client
+    participant MW as Latency Middleware
+    participant Route as FastAPI /healthcheck
+    participant Service as HealthCheckService
+    participant Cache as Latency Cache
+    participant Version as SeriesVersionRecord
+    participant DB as PostgreSQL
+
+    Client->>MW: GET /healthcheck
+    MW->>Route: call_next(request)
+    Route->>Service: healthcheck(session)
+    Service->>Cache: get_latency_cache()
+    Cache-->>Service: train/predict avg+p95 buckets
+    Service->>Version: count_series(session)
+    Version->>DB: SELECT COUNT(series_id)
+    DB-->>Version: total trained series
+    Version-->>Service: series_count
+    Service-->>Route: HealthCheckResponse
+    Route-->>MW: 200 response
+    MW-->>Client: 200 response
