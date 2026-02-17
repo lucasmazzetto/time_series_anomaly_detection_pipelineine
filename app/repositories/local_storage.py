@@ -1,44 +1,15 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from typing import Any
 
 from app.repositories.storage import Storage
 from app.schemas.model_state import ModelState
 from app.schemas.time_series import TimeSeries
-from app.utils.env import load_min_training_data_points as get_params
+from app.utils.env import get_model_state_folder, get_training_data_folder
 
 
 class LocalStorage(Storage):
-    @staticmethod
-    def _resolve_folder(
-        params: dict[str, Any],
-        param_keys: tuple[str, ...],
-        env_keys: tuple[str, ...],
-        fallback: str,
-    ) -> Path:
-        """@brief Resolve a storage folder from params, env vars, or fallback.
-
-        @param params Parameters dictionary to check first.
-        @param param_keys Keys to search in params.
-        @param env_keys Environment variables to search next.
-        @param fallback Default folder if nothing else is set.
-        @return Resolved folder path.
-        """
-        for key in param_keys:
-            value = params.get(key)
-            if value:
-                return Path(str(value))
-
-        for key in env_keys:
-            value = os.getenv(key)
-            if value:
-                return Path(value)
-
-        return Path(fallback)
-
     def save_state(self, series_id: str, version: int, state: ModelState) -> str:
         """@brief Save model state locally as a JSON file.
 
@@ -47,13 +18,7 @@ class LocalStorage(Storage):
         @param state Serialized model state payload.
         @return Filesystem path where the state was stored.
         """
-        params = get_params()
-        folder = self._resolve_folder(
-            params=params,
-            param_keys=("model_state_folder", "model_folder"),
-            env_keys=("MODEL_STATE_FOLDER", "MODEL_FOLDER"),
-            fallback="./data/models",
-        )
+        folder = Path(get_model_state_folder())
         series_folder = folder / series_id
         series_folder.mkdir(parents=True, exist_ok=True)
         file_path = series_folder / f"{series_id}_model_v{version}.json"
@@ -71,13 +36,7 @@ class LocalStorage(Storage):
         @param payload Training data payload.
         @return Filesystem path where the data was stored.
         """
-        params = get_params()
-        folder = self._resolve_folder(
-            params=params,
-            param_keys=("training_data_folder", "data_folder"),
-            env_keys=("TRAINING_DATA_FOLDER", "DATA_FOLDER"),
-            fallback="./data/data",
-        )
+        folder = Path(get_training_data_folder())
         series_folder = folder / series_id
         series_folder.mkdir(parents=True, exist_ok=True)
         file_path = series_folder / f"{series_id}_data_v{version}.json"

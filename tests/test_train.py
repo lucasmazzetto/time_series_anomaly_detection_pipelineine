@@ -1,4 +1,3 @@
-import os
 from unittest.mock import patch
 
 import pytest
@@ -17,9 +16,6 @@ def make_timestamps(count: int, *, start: int = 1_700_000_000) -> list[int]:
 
 @pytest.fixture(autouse=True)
 def _test_overrides():
-    previous_min_points = os.environ.get("MIN_TRAINING_DATA_POINTS")
-    os.environ["MIN_TRAINING_DATA_POINTS"] = "3"
-
     class DummySession:
         def rollback(self) -> None:
             pass
@@ -30,10 +26,6 @@ def _test_overrides():
     app.dependency_overrides[get_session] = _override_session
     yield
     app.dependency_overrides.pop(get_session, None)
-    if previous_min_points is None:
-        os.environ.pop("MIN_TRAINING_DATA_POINTS", None)
-    else:
-        os.environ["MIN_TRAINING_DATA_POINTS"] = previous_min_points
 
 
 def test_fit_endpoint():
