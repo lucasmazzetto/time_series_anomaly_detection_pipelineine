@@ -1,29 +1,13 @@
+import logging
 import math
-import threading
 import time
-from copy import deepcopy
 from typing import Any
 
 from fastapi import Request
 
-_METRICS_LOCK = threading.Lock()
+from app.database.latency import LatencyRecord
 
-LATENCY_CACHE: dict[str, dict[str, Any]] = {
-    "train": {
-        "count": 0,
-        "total_ms": 0.0,
-        "avg_ms": 0.0,
-        "p95_ms": 0.0,
-        "latencies_ms": [],
-    },
-    "predict": {
-        "count": 0,
-        "total_ms": 0.0,
-        "avg_ms": 0.0,
-        "p95_ms": 0.0,
-        "latencies_ms": [],
-    },
-}
+_LOGGER = logging.getLogger(__name__)
 
 
 def _target_from_path(path: str) -> str | None:
@@ -53,24 +37,30 @@ def _compute_p95(latencies_ms: list[float]) -> float:
     return sorted_latencies[rank - 1]
 
 
-def _update_latency_cache(path: str, latency_ms: float) -> None:
-    """@brief Update latency metrics for the route group derived from path.
+def _metrics_from(latencies_ms: list[float]) -> dict[str, Any]:
+    """@brief Compute summary metrics from raw latency values.
 
-    @param path Request path used to decide the target bucket.
-    @param latency_ms Measured request latency in milliseconds.
-    @return None.
+    @param latencies_ms Raw latency values in milliseconds.
+    @return Dictionary with count, total, avg, p95 and raw list.
     """
-    target = _target_from_path(path)
-    if target is None:
-        return
+    if not latencies_ms:
+        return {
+            "count": 0,
+            "total_ms": 0.0,
+            "avg_ms": 0.0,
+            "p95_ms": 0.0,
+            "latencies_ms": [],
+        }
 
-    with _METRICS_LOCK:
-        bucket = LATENCY_CACHE[target]
-        bucket["latencies_ms"].append(latency_ms)
-        bucket["count"] += 1
-        bucket["total_ms"] += latency_ms
-        bucket["avg_ms"] = bucket["total_ms"] / bucket["count"]
-        bucket["p95_ms"] = _compute_p95(bucket["latencies_ms"])
+    total = float(sum(latencies_ms))
+    count = len(latencies_ms)
+    return {
+        "count": count,
+        "total_ms": total,
+        "avg_ms": total / count,
+        "p95_ms": _compute_p95(latencies_ms),
+        "latencies_ms": latencies_ms,
+    }
 
 
 async def track_request_latency(request: Request, call_next):
@@ -88,34 +78,42 @@ async def track_request_latency(request: Request, call_next):
     start_time = time.perf_counter()
     response = await call_next(request)
 
-    if 200 <= response.status_code < 300:
+    target = _target_from_path(request.url.path)
+    if target is not None and 200 <= response.status_code < 300:
         elapsed_ms = (time.perf_counter() - start_time) * 1000.0
-        _update_latency_cache(request.url.path, elapsed_ms)
+        try:
+            LatencyRecord().push_latency(target, elapsed_ms)
+        except Exception as exc:
+            _LOGGER.warning("Failed to store latency in Redis: %s", exc)
         
     return response
 
 
 def get_latency_cache() -> dict[str, dict[str, Any]]:
-    """@brief Return a defensive copy of current latency metrics.
+    """@brief Return computed latency metrics sourced from Redis.
 
-    @return Deep copy of the process-local latency cache.
+    @return Metrics dictionary grouped by `train` and `predict`.
     """
-    with _METRICS_LOCK:
-        return deepcopy(LATENCY_CACHE)
+    try:
+        record = LatencyRecord()
+        train_latencies = record.get_latencies("train")
+        predict_latencies = record.get_latencies("predict")
+    except Exception:
+        train_latencies = []
+        predict_latencies = []
+
+    return {
+        "train": _metrics_from(train_latencies),
+        "predict": _metrics_from(predict_latencies),
+    }
 
 
 def reset_latency_cache() -> None:
-    """@brief Clear all cached latency metrics.
+    """@brief Clear Redis-backed latency metrics.
 
     @return None.
-
-    @details
-    Primarily intended for tests and local diagnostics.
     """
-    with _METRICS_LOCK:
-        for bucket in LATENCY_CACHE.values():
-            bucket["count"] = 0
-            bucket["total_ms"] = 0.0
-            bucket["avg_ms"] = 0.0
-            bucket["p95_ms"] = 0.0
-            bucket["latencies_ms"] = []
+    try:
+        LatencyRecord().clear()
+    except Exception:
+        return

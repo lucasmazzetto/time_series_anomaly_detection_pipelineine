@@ -1,8 +1,9 @@
-import os
 from math import isfinite
 from typing import Literal
 
 from redis import Redis
+
+from app.utils.env import get_latency_history_limit, get_redis_url
 
 LatencyTarget = Literal["train", "predict"]
 
@@ -26,16 +27,16 @@ class LatencyRecord:
         number of latency values retained per target list.
 
         @param redis_client Optional pre-configured Redis client.
-        @param redis_url Optional Redis URL. Falls back to `REDIS_URL`.
+        @param redis_url Optional Redis URL. Falls back to `get_redis_url()`.
         @param history_limit Optional max history size per list.
-        Falls back to `LATENCY_HISTORY_LIMIT`.
+        Falls back to `get_latency_history_limit()`.
         @return None.
         @throws ValueError If `history_limit` is less than 1.
         """
-        url = redis_url or os.getenv("REDIS_URL", "redis://redis:6379/0")
+        url = redis_url or get_redis_url()
 
         if history_limit is None:
-            history_limit = int(os.getenv("LATENCY_HISTORY_LIMIT", "500"))
+            history_limit = get_latency_history_limit()
 
         if history_limit < 1:
             raise ValueError("LATENCY_HISTORY_LIMIT must be greater than or equal to 1.")
