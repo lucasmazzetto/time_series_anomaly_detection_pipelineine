@@ -1,52 +1,51 @@
 sequenceDiagram
     autonumber
     actor Client
-    participant API as FastAPI /fit/{series_id}
-    participant ASchema as TrainData Validator
-    participant CoreSchema as TimeSeries/DataPoint
+    participant MW as Latency Middleware
+    participant Route as FastAPI /fit/{series_id}
     participant Service as TrainService
     participant Trainer as AnomalyDetectionTrainer
     participant Model as SimpleModel
-    participant Store as LocalStorage
-    participant ORM as AnomalyDetectionRecord
+    participant Record as AnomalyDetectionRecord
     participant Version as SeriesVersionRecord
     participant DB as PostgreSQL
+    participant Store as LocalStorage
     participant FS as Local Filesystem
 
-    Client->>API: POST /fit/{series_id}\n{timestamps, values}
-    API->>ASchema: Validate payload
-    ASchema-->>API: TrainData
-    API->>CoreSchema: Build TimeSeries(DataPoint[])
-    CoreSchema-->>API: TimeSeries
-    API->>Service: train(series_id, payload)
+    Client->>MW: POST /fit/{series_id}
+    MW->>Route: call_next(request)
+    Route->>Route: Validate SeriesId + TrainData
+    Route->>Service: train(series_id, payload)
+    Service->>Service: _to_time_series + validate_for_training()
 
     Service->>Trainer: train(time_series)
-    Trainer->>Model: fit(data)
-    Model-->>Trainer: ModelState(mean, std)
+    Trainer->>Model: fit(data, callback)
+    Trainer->>Model: save()
+    Model-->>Trainer: ModelState
     Trainer-->>Service: ModelState
 
-    Service->>ORM: save(session, record)
-    ORM->>Version: next_version(session, series_id)
-    Version->>DB: INSERT ... ON CONFLICT ... RETURNING
-    DB-->>Version: next_version
-    Version-->>ORM: next_version
-    ORM->>DB: INSERT + FLUSH
-    ORM-->>Service: version
+    Service->>Record: build(series_id, version=None, paths=None)
+    Service->>Record: save(session, record)
+    Record->>Version: next_version(session, series_id)
+    Version->>DB: INSERT .. ON CONFLICT .. RETURNING
+    DB-->>Version: assigned version
+    Version-->>Record: version
+    Record->>DB: INSERT + FLUSH
+    DB-->>Record: metadata persisted
 
     Service->>Store: save_state(series_id, version, state)
-    Store->>FS: Write .json model artifact
+    Store->>FS: write model JSON
     FS-->>Store: model_path
-    Store-->>Service: model_path
 
-    Service->>Store: save_data(series_id, version, payload)
-    Store->>FS: Write .json training data
+    Service->>Store: save_data(series_id, version, time_series)
+    Store->>FS: write training data JSON
     FS-->>Store: data_path
-    Store-->>Service: data_path
 
-    Service->>ORM: update(model_path, data_path)
-    Service->>ORM: commit()
-    ORM->>DB: COMMIT
-    DB-->>ORM: committed
+    Service->>Record: update(model_path, data_path)
+    Service->>Record: commit()
+    Record->>DB: COMMIT
 
-    Service-->>API: TrainResponse
-    API-->>Client: 200 TrainResponse
+    Service-->>Route: TrainResponse
+    Route-->>MW: 200 response
+    MW->>MW: update train latency cache
+    MW-->>Client: 200 response
