@@ -158,6 +158,20 @@ def test_series_version_record_next_version_executes_insert():
     result.scalar_one.assert_called_once()
 
 
+def test_series_version_record_count_series_returns_row_count():
+    """@brief Verify count_series returns row count from SQL aggregation."""
+    session = MagicMock()
+    query = session.query.return_value
+    query.scalar.return_value = 2
+
+    payload = SeriesVersionRecord.count_series(session)
+
+    assert payload == 2
+    assert session.query.call_count == 1
+    assert "count(" in str(session.query.call_args[0][0]).lower()
+    query.scalar.assert_called_once()
+
+
 def test_anomaly_detection_record_to_dict_serializes_fields():
     """@brief Verify to_dict serializes row fields in API-friendly format.
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -35,3 +35,14 @@ class SeriesVersionRecord(Base):
         ).returning(SeriesVersionRecord.last_version)
 
         return int(session.execute(stmt).scalar_one())
+
+    @staticmethod
+    def count_series(session: Session) -> int:
+        """
+        @brief Count trained series directly in SQL.
+
+        @param session Active SQLAlchemy session for the query.
+        @return Number of rows (series ids) in `series_versions`.
+        """
+        count = session.query(func.count(SeriesVersionRecord.series_id)).scalar()
+        return int(count or 0)

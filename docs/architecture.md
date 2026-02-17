@@ -1,156 +1,193 @@
 # Anomaly Detection API Architecture
 
 ## Scope
-This document maps how data flows through the project when training a model via `POST /fit/{series_id}`
+
+This document describes the current project structure and runtime flow for:
+- `POST /fit/{series_id}`
+- `POST /predict/{series_id}`
+- `GET /healthcheck`
+
+## Project Structure
+
+```text
+app/
+  api/                # FastAPI route handlers
+  middleware/         # Request latency middleware
+  services/           # Application use-cases
+  core/               # Model/trainer abstractions and implementation
+  schemas/            # Request/response/domain validation models
+  repositories/       # Storage interface + local filesystem adapter
+  database/           # ORM entities and query helpers
+  db.py               # Engine/session configuration
+  main.py             # App bootstrap and route registration
+docs/
+  architecture.md
+  training-sequence.mmd
+migrations/
+  versions/           # Alembic schema migrations
+tests/                # API, service, schema, core and repository tests
+data/                 # Persisted artifacts (models/data)
+```
+
+## Layer Responsibilities
+
+- API layer (`app/api/*.py`)
+  - Validates path/query/body input with Pydantic/FastAPI
+  - Instantiates service objects and returns typed responses
+- Service layer (`app/services/*.py`)
+  - Contains use-case logic and exception mapping to HTTP status codes
+- Core layer (`app/core/*.py`)
+  - Model contract (`Model`), trainer contract (`Trainer`), and `SimpleModel`
+- Schema layer (`app/schemas/*.py`)
+  - Input validation and conversion (`TrainData -> TimeSeries`, `PredictData -> DataPoint`)
+- Persistence layer
+  - Database metadata: `app/database/*.py`
+  - Artifact storage: `app/repositories/local_storage.py`
+  - Session lifecycle: `app/db.py`
+- Middleware (`app/middleware/latency.py`)
+  - Tracks latency for successful `/fit/*` and `/predict/*` requests
 
 ## Runtime Components
-- `FastAPI app` (`app/main.py`): boots the API and registers routes
-- `Train API route` (`app/api/train.py`): validates request shape and delegates to `TrainService`
-- `Predict API route` (`app/api/predict.py`): validates request shape and delegates to `PredictService`
-- `API/domain schemas` (`app/schemas/*.py`):
-  - training input: `app/schemas/train_data.py`
-  - prediction input: `app/schemas/predict_data.py`, `app/schemas/predict_version.py`
-  - core domain models: `app/schemas/time_series.py`, `app/schemas/data_point.py`, `app/schemas/model_state.py`
-  - route/path helpers: `app/schemas/series_id.py`, response models
-- `Training service` (`app/services/train_service.py`): coordinates training, metadata persistence, artifact persistence
-- `Prediction service` (`app/services/predict_service.py`): resolves model metadata/artifact and runs inference
-- `Trainer` (`app/core/trainer.py`): delegates fitting to a model implementation
-- `Model interface + implementation`:
-  - `app/core/model.py`
-  - `app/core/simple_model.py`
-- `Storage repository`:
-  - interface: `app/repositories/storage.py`
-  - local implementation: `app/repositories/local_storage.py`
-- `Database models + helpers`:
-  - `app/database/anomaly_detection_record.py`: record creation, save, update, commit, lookup
-  - `app/database/series_version_record.py`: atomic version assignment per series
-- `DB session factory` (`app/db.py`): SQLAlchemy engine/session lifecycle
-- `PostgreSQL` (via `docker-compose.yml` + migrations): stores model metadata and artifact paths
 
-## Layered View
-1. API Layer
-- `app/main.py`
-- `app/api/train.py`
-- `app/api/predict.py`
+- App bootstrap: `app/main.py`
+  - Registers routers: train, predict, healthcheck
+  - Attaches middleware: `track_request_latency`
+- Services:
+  - `TrainService` orchestrates training + metadata + artifact writes
+  - `PredictService` resolves metadata/artifact and performs prediction
+  - `HealthCheckService` returns trained-series count and latency metrics
+- Database entities:
+  - `AnomalyDetectionRecord` in `anomaly_detection_models`
+  - `SeriesVersionRecord` in `series_versions`
 
-2. Application/Service Layer
-- `app/services/train_service.py`
-- `app/services/predict_service.py`
+## Endpoint Flows
 
-3. Domain/Core Layer
-- `app/schemas/train_data.py`
-- `app/schemas/predict_data.py`
-- `app/schemas/predict_version.py`
-- `app/schemas/time_series.py`
-- `app/schemas/data_point.py`
-- `app/schemas/model_state.py`
-- `app/core/trainer.py`
-- `app/core/model.py`
-- `app/core/simple_model.py`
+### `POST /fit/{series_id}`
 
-4. Infrastructure Layer
-- `app/repositories/storage.py`
-- `app/repositories/local_storage.py`
-- `app/database/anomaly_detection_record.py`
-- `app/database/series_version_record.py`
-- `app/db.py`
-- `migrations/*`, `alembic.ini`, `docker-compose.yml`
+1. Route validates `series_id` and `TrainData`.
+2. Service converts to `TimeSeries` and runs training preflight validation.
+3. Trainer calls model fit, then returns model state.
+4. Metadata row is created and version is assigned atomically when needed.
+5. Model state and training data are persisted as JSON artifacts.
+6. Metadata paths are updated, transaction is committed, and `TrainResponse` is returned.
 
-## Training Flow
-1. Client calls `POST /fit/{series_id}` with `timestamps` and `values`
-2. Route validation runs on:
-- `series_id` via `SeriesId` (`app/schemas/series_id.py`)
-- payload shape/types via `TrainData` (`app/schemas/train_data.py`)
-3. `TrainService._to_time_series()` converts payload into `TimeSeries(data=[DataPoint(...)])` and enforces training preflight constraints
-4. `TrainService.train()` calls trainer/model fit and gets a `ModelState`
-5. Service builds a DB record and persists it; version is assigned atomically via `SeriesVersionRecord.next_version()` when needed
-6. Service writes artifacts as JSON files:
-- model state under `./data/models/<series_id>/<series_id>_model_v<version>.json`
-- training payload under `./data/data/<series_id>/<series_id>_data_v<version>.json`
-7. Service updates record paths and commits the transaction
-8. Route returns `TrainResponse { series_id, success=true, message }`
+### `POST /predict/{series_id}`
 
-## Sequence Diagram
+1. Route validates `series_id`, `PredictData`, and query `version`.
+2. Version is normalized (`0`, `1`, `v1`, `V1` supported).
+3. Service resolves latest/specific model metadata.
+4. Service loads model artifact, restores model state, and predicts anomaly.
+5. `PredictResponse` returns anomaly flag and resolved model version.
+
+### `GET /healthcheck`
+
+1. Reads in-memory latency cache.
+2. Counts trained series from `series_versions`.
+3. Returns average and P95 for training/inference latency.
+
+## Training Sequence Diagram
+
+The same diagram is also available at `docs/training-sequence.mmd`.
+
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client
-    participant API as FastAPI /fit/{series_id}
-    participant ASchema as TrainData Validator
-    participant CoreSchema as TimeSeries/DataPoint
+    participant MW as Latency Middleware
+    participant Route as FastAPI /fit/{series_id}
     participant Service as TrainService
     participant Trainer as AnomalyDetectionTrainer
     participant Model as SimpleModel
-    participant Store as LocalStorage
-    participant ORM as AnomalyDetectionRecord
+    participant Record as AnomalyDetectionRecord
     participant Version as SeriesVersionRecord
     participant DB as PostgreSQL
+    participant Store as LocalStorage
     participant FS as Local Filesystem
 
-    Client->>API: POST /fit/{series_id}\n{timestamps, values}
-    API->>ASchema: Validate payload
-    ASchema-->>API: TrainData
-    API->>CoreSchema: Build TimeSeries(DataPoint[])
-    CoreSchema-->>API: TimeSeries
-    API->>Service: train(series_id, payload)
+    Client->>MW: POST /fit/{series_id}
+    MW->>Route: call_next(request)
+    Route->>Route: Validate SeriesId + TrainData
+    Route->>Service: train(series_id, payload)
+    Service->>Service: _to_time_series + validate_for_training()
 
     Service->>Trainer: train(time_series)
-    Trainer->>Model: fit(data)
-    Model-->>Trainer: ModelState(mean, std)
+    Trainer->>Model: fit(data, callback)
+    Trainer->>Model: save()
+    Model-->>Trainer: ModelState
     Trainer-->>Service: ModelState
 
-    Service->>ORM: save(session, record)
-    ORM->>Version: next_version(session, series_id)
-    Version->>DB: INSERT ... ON CONFLICT ... RETURNING
-    DB-->>Version: next_version
-    Version-->>ORM: next_version
-    ORM->>DB: INSERT + FLUSH
-    ORM-->>Service: version
+    Service->>Record: build(series_id, version=None, paths=None)
+    Service->>Record: save(session, record)
+    Record->>Version: next_version(session, series_id)
+    Version->>DB: INSERT .. ON CONFLICT .. RETURNING
+    DB-->>Version: assigned version
+    Version-->>Record: version
+    Record->>DB: INSERT + FLUSH
+    DB-->>Record: metadata persisted
 
     Service->>Store: save_state(series_id, version, state)
-    Store->>FS: Write .json model artifact
+    Store->>FS: write model JSON
     FS-->>Store: model_path
-    Store-->>Service: model_path
 
-    Service->>Store: save_data(series_id, version, payload)
-    Store->>FS: Write .json training data
+    Service->>Store: save_data(series_id, version, time_series)
+    Store->>FS: write training data JSON
     FS-->>Store: data_path
-    Store-->>Service: data_path
 
-    Service->>ORM: update(model_path, data_path)
-    Service->>ORM: commit()
-    ORM->>DB: COMMIT
-    DB-->>ORM: committed
+    Service->>Record: update(model_path, data_path)
+    Service->>Record: commit()
+    Record->>DB: COMMIT
 
-    Service-->>API: TrainResponse
-    API-->>Client: 200 TrainResponse
+    Service-->>Route: TrainResponse
+    Route-->>MW: 200 response
+    MW->>MW: update train latency cache
+    MW-->>Client: 200 response
 ```
 
-## Data Contracts
-- External training request
-  - `timestamps: list[int]`
-  - `values: list[float]`
-- Internal training payload
-  - `TimeSeries.data: Sequence[DataPoint]`
-  - `DataPoint.timestamp: int`
-  - `DataPoint.value: float`
-- Persisted metadata (`anomaly_detection_models`)
-  - `series_id`, `version` (composite key)
-  - `model_path`, `data_path`
-  - `created_at`, `updated_at`
+## Validation Rules
 
-## Configuration and Defaults
-- `DATABASE_URL`: defaults to `postgresql+psycopg2://postgres:postgres@db:5432/postgres`
-- `MIN_TRAINING_DATA_POINTS`: defaults to `3`
-- Storage folders (fallbacks)
+- `SeriesId`: non-empty, trimmed, regex `[A-Za-z0-9._-]+`, rejects `..`
+- `TrainData`: non-negative integer timestamps, finite numeric values, same length arrays
+- `TimeSeries`: at least 2 points, strictly increasing timestamps
+- `PredictData`: timestamp is non-empty digits-only string, value is finite numeric
+- `PredictVersion`: accepts digits with optional `v`/`V` prefix
+
+## Persistence and Versioning
+
+- `anomaly_detection_models`
+  - primary key: `(series_id, version)`
+  - stores `model_path`, `data_path`, `created_at`, `updated_at`
+- `series_versions`
+  - primary key: `series_id`
+  - stores `last_version`
+- Version increment strategy:
+  - PostgreSQL upsert with `RETURNING` to ensure atomic version allocation
+
+## Artifact Storage
+
+- Model state path pattern:
+  - `./data/models/<series_id>/<series_id>_model_v<version>.json`
+- Training data path pattern:
+  - `./data/data/<series_id>/<series_id>_data_v<version>.json`
+- Folder resolution precedence:
+  - params dict keys
+  - environment variables
+  - fallback defaults
+
+## Configuration Defaults
+
+- `DATABASE_URL`: `postgresql+psycopg2://postgres:postgres@db:5432/postgres`
+- `MIN_TRAINING_DATA_POINTS`: `3`
+- Storage fallback folders:
   - model state: `./data/models`
   - training data: `./data/data`
 
-## Failure Behavior
-- Training payload validation and training preflight errors map to HTTP `422`
-- Unexpected runtime failures map to HTTP `500`
-- Service always rolls back DB session before re-raising handled exceptions
+## Error Behavior
 
-## API QA Execution Context
-- API QA commands should be executed from container `time_series_anomaly_detection-db-1`
-- From that container, call API endpoints through Docker DNS using `http://api:8000`
+- Training:
+  - validation/preflight errors -> HTTP `422`
+  - unexpected runtime errors -> HTTP `500`
+  - session rollback before re-raising failures
+- Prediction:
+  - invalid inputs -> HTTP `422` or `400` (service defensive checks)
+  - missing metadata/artifact -> HTTP `404`
+  - missing `model_path` or unexpected errors -> HTTP `500`
