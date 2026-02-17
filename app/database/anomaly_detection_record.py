@@ -126,6 +126,59 @@ class AnomalyDetectionRecord(Base):
             )
 
         return model.to_dict()
+
+    @staticmethod
+    def get_last_training_data(
+        session: Session, series_id: str
+    ) -> dict[str, Any]:
+        """
+        @brief Retrieve latest persisted training-data metadata for a series.
+
+        @param session Active SQLAlchemy session for the query.
+        @param series_id The series identifier.
+        @return Serialized dictionary for the latest model row.
+        @throws ValueError If no row exists for the provided series id.
+        """
+        model = (
+            session.query(AnomalyDetectionRecord)
+            .filter(AnomalyDetectionRecord.series_id == series_id)
+            .order_by(AnomalyDetectionRecord.version.desc())
+            .first()
+        )
+
+        if model is None:
+            raise ValueError(f"No training data found for series_id '{series_id}'.")
+
+        return model.to_dict()
+
+    @staticmethod
+    def get_training_data(
+        session: Session, series_id: str, version: int
+    ) -> dict[str, Any]:
+        """
+        @brief Retrieve specific training-data metadata for series/version.
+
+        @param session Active SQLAlchemy session for the query.
+        @param series_id The series identifier.
+        @param version The desired model version.
+        @return Serialized dictionary for the requested model row.
+        @throws ValueError If the requested series/version row does not exist.
+        """
+        model = (
+            session.query(AnomalyDetectionRecord)
+            .filter(
+                AnomalyDetectionRecord.series_id == series_id,
+                AnomalyDetectionRecord.version == version,
+            )
+            .first()
+        )
+
+        if model is None:
+            raise ValueError(
+                f"Training data version '{version}' not found for series_id '{series_id}'."
+            )
+
+        return model.to_dict()
     
     def touch(self) -> None:
         """

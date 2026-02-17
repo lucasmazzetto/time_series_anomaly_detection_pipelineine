@@ -34,3 +34,13 @@ class Storage(ABC):
         @return Deserialized model state payload.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    def load_data(self, data_path: str) -> TimeSeries:
+        """@brief Load persisted training data from disk.
+
+        @param data_path Filesystem path to the persisted training data.
+        @return Deserialized training data payload.
+        @throws FileNotFoundError If the target file does not exist.
+        """
+        raise NotImplementedError
