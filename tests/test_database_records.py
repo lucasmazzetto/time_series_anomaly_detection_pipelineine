@@ -54,8 +54,7 @@ def test_anomaly_detection_record_save_assigns_version_and_persists():
     assert record.version == 4
     next_version_mock.assert_called_once_with(session, "series_y")
     session.add.assert_called_once_with(record)
-    session.commit.assert_called_once()
-    session.refresh.assert_called_once_with(record)
+    session.flush.assert_called_once()
 
 
 def test_anomaly_detection_record_save_keeps_existing_version():
@@ -76,15 +75,14 @@ def test_anomaly_detection_record_save_keeps_existing_version():
     assert record.version == 2
     next_version_mock.assert_not_called()
     session.add.assert_called_once_with(record)
-    session.commit.assert_called_once()
-    session.refresh.assert_called_once_with(record)
+    session.flush.assert_called_once()
 
 
-def test_anomaly_detection_record_update_persists_changes():
-    """@brief Verify update persists model/data path changes.
+def test_anomaly_detection_record_update_updates_changes_without_commit():
+    """@brief Verify update sets model/data path changes in-memory.
 
-    @details Ensures update writes the new paths and commits through the
-    attached session.
+    @details Ensures update writes the new paths and validates session
+    attachment without issuing an implicit commit.
     """
     record = AnomalyDetectionRecord.build(series_id="series_u", version=1)
     session = MagicMock()
@@ -97,8 +95,7 @@ def test_anomaly_detection_record_update_persists_changes():
 
     assert record.model_path == "/tmp/m.pkl"
     assert record.data_path == "/tmp/d.json"
-    session.add.assert_called_once_with(record)
-    session.commit.assert_called_once()
+    session.commit.assert_not_called()
 
 
 def test_anomaly_detection_record_update_raises_without_session():
@@ -114,6 +111,31 @@ def test_anomaly_detection_record_update_raises_without_session():
     ):
         with pytest.raises(RuntimeError, match="not attached to a session"):
             record.update(model_path="/tmp/m.pkl", data_path="/tmp/d.json")
+
+
+def test_anomaly_detection_record_commit_persists_transaction():
+    """@brief Verify commit persists through the attached session."""
+    record = AnomalyDetectionRecord.build(series_id="series_commit", version=1)
+    session = MagicMock()
+
+    with patch(
+        "app.database.anomaly_detection_record.object_session",
+        return_value=session,
+    ):
+        record.commit()
+
+    session.commit.assert_called_once()
+
+
+def test_anomaly_detection_record_commit_raises_without_session():
+    """@brief Verify commit fails when record is detached."""
+    record = AnomalyDetectionRecord.build(series_id="series_detached", version=1)
+
+    with patch(
+        "app.database.anomaly_detection_record.object_session", return_value=None
+    ):
+        with pytest.raises(RuntimeError, match="not attached to a session"):
+            record.commit()
 
 
 def test_series_version_record_next_version_executes_insert():

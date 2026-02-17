@@ -70,6 +70,7 @@ def test_train_success_saves_state_and_data():
     model.update.assert_called_once_with(
         model_path="/tmp/model.pkl", data_path="/tmp/data.json"
     )
+    model.commit.assert_called_once_with()
     session.rollback.assert_not_called()
 
 

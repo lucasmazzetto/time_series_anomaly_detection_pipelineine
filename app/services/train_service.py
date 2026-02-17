@@ -61,6 +61,7 @@ class TrainService:
             data_path = self.storage.save_data(series_id, version, time_series)
 
             model_record.update(model_path=model_path, data_path=data_path)
+            model_record.commit()
 
             return TrainResponse(
                 series_id=series_id,

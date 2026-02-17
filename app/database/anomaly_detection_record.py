@@ -74,8 +74,7 @@ class AnomalyDetectionRecord(Base):
                 session, model.series_id
             )
         session.add(model)
-        session.commit()
-        session.refresh(model)
+        session.flush()
         return int(model.version)
 
     @staticmethod
@@ -154,7 +153,7 @@ class AnomalyDetectionRecord(Base):
     
     def update(self, *, model_path: str | None, data_path: str | None) -> None:
         """
-        @brief Update storage paths and persist changes.
+        @brief Update storage paths in the current transaction.
 
         @param model_path New model path to store.
         @param data_path New data path to store.
@@ -169,5 +168,15 @@ class AnomalyDetectionRecord(Base):
         if session is None:
             raise RuntimeError("AnomalyDetectionRecord is not attached to a session")
         
-        session.add(self)
+    def commit(self) -> None:
+        """
+        @brief Commit current transaction for this record's session.
+
+        @return None
+        """
+        session = object_session(self)
+
+        if session is None:
+            raise RuntimeError("AnomalyDetectionRecord is not attached to a session")
+
         session.commit()
