@@ -3,11 +3,14 @@ services:
     build: .
     depends_on:
       - db
+      - redis
     working_dir: /app
     volumes:
       - ./:/app
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/postgres
+      REDIS_URL: redis://redis:6379/0
+      LATENCY_HISTORY_LIMIT: 500
     ports:
       - "8000:8000"
   db:
@@ -20,6 +23,10 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
 
 volumes:
   postgres_data:

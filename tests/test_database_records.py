@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy.sql.dml import Insert
 
 from app.database.anomaly_detection import AnomalyDetectionRecord
+from app.database.latency import LatencyRecord
 from app.database.series_version import SeriesVersionRecord
 
 
@@ -288,3 +289,71 @@ def test_anomaly_detection_record_get_model_version_raises_when_missing():
 
     with pytest.raises(ValueError, match="Model version '7' not found"):
         AnomalyDetectionRecord.get_model_version(session, "series_missing", 7)
+
+
+def test_latency_record_push_latency_writes_and_trims_list():
+    """@brief Verify push_latency appends values and trims to configured limit."""
+    redis_client = MagicMock()
+    pipeline = redis_client.pipeline.return_value
+    record = LatencyRecord(redis_client=redis_client, history_limit=3)
+
+    record.push_latency("train", 23.4)
+
+    redis_client.pipeline.assert_called_once()
+    pipeline.rpush.assert_called_once_with("train_latencies", 23.4)
+    pipeline.ltrim.assert_called_once_with("train_latencies", -3, -1)
+    pipeline.execute.assert_called_once()
+
+
+def test_latency_record_get_latencies_parses_floats_and_skips_invalid_values():
+    """@brief Verify get_latencies returns only finite numeric values."""
+    redis_client = MagicMock()
+    redis_client.lrange.return_value = ["12.5", "abc", "nan", "18.0", "inf", "-inf"]
+    record = LatencyRecord(redis_client=redis_client, history_limit=5)
+
+    payload = record.get_latencies("predict")
+
+    redis_client.lrange.assert_called_once_with("predict_latencies", 0, -1)
+    assert payload == [12.5, 18.0]
+
+
+def test_latency_record_clear_deletes_all_latency_keys():
+    """@brief Verify clear removes both train and predict lists."""
+    redis_client = MagicMock()
+    record = LatencyRecord(redis_client=redis_client, history_limit=5)
+
+    record.clear()
+
+    redis_client.delete.assert_called_once_with("train_latencies", "predict_latencies")
+
+
+def test_latency_record_rejects_non_finite_latency_values():
+    """@brief Verify push_latency rejects NaN/Infinity values."""
+    redis_client = MagicMock()
+    record = LatencyRecord(redis_client=redis_client, history_limit=5)
+
+    with pytest.raises(ValueError, match="latency_ms must be a finite number"):
+        record.push_latency("train", float("nan"))
+
+    with pytest.raises(ValueError, match="latency_ms must be a finite number"):
+        record.push_latency("predict", float("inf"))
+
+
+def test_latency_record_rejects_invalid_target():
+    """@brief Verify invalid targets are rejected consistently."""
+    redis_client = MagicMock()
+    record = LatencyRecord(redis_client=redis_client, history_limit=5)
+
+    with pytest.raises(ValueError, match="target must be 'train' or 'predict'"):
+        record.push_latency("healthcheck", 10.0)  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="target must be 'train' or 'predict'"):
+        record.get_latencies("plot")  # type: ignore[arg-type]
+
+
+def test_latency_record_rejects_invalid_history_limit():
+    """@brief Verify constructor enforces a positive history limit."""
+    redis_client = MagicMock()
+
+    with pytest.raises(ValueError, match="LATENCY_HISTORY_LIMIT must be greater"):
+        LatencyRecord(redis_client=redis_client, history_limit=0)
