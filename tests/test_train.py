@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.db import get_session
 from app.main import app
+from app.schemas.train_response import TrainResponse
 
 
 client = TestClient(app)
@@ -50,7 +51,12 @@ def test_fit_endpoint():
     }
 
     with patch(
-        "app.api.train.AnomalyDetectionTrainingService.train", return_value=True
+        "app.api.train.TrainService.train",
+        return_value=TrainResponse(
+            series_id=series_id,
+            message="Training successfully started.",
+            success=True,
+        ),
     ):
         response = client.post(f"/fit/{series_id}", json=payload)
     
@@ -127,7 +133,9 @@ def test_fit_endpoint_rejects_constant_values():
     response = client.post(f"/fit/{series_id}", json=payload)
 
     assert response.status_code == 422
-    assert "constant" in response.json()["detail"][0]["msg"].lower()
+    detail = response.json()["detail"]
+    assert isinstance(detail, str)
+    assert "constant" in detail.lower()
 
 
 def test_fit_endpoint_rejects_non_numeric_values():
@@ -147,3 +155,23 @@ def test_fit_endpoint_rejects_non_numeric_values():
     assert response.status_code == 422
     msg = response.json()["detail"][0]["msg"].lower()
     assert any(token in msg for token in ("number", "float"))
+
+
+def test_fit_endpoint_rejects_blank_series_id():
+    """@brief Ensure blank/whitespace series_id is rejected at API validation.
+
+    @details Path values that decode to whitespace (e.g. `%20%20`) must fail
+    before training service execution.
+    """
+    payload = {
+        "timestamps": make_timestamps(4),
+        "values": [1.0, 2.0, 3.0, 4.0],
+    }
+
+    with patch("app.api.train.TrainService.train") as train_mock:
+        response = client.post("/fit/%20%20", json=payload)
+
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    assert any("series_id must be a non-empty string." in error["msg"] for error in errors)
+    train_mock.assert_not_called()

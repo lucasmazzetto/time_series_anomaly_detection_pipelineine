@@ -1,6 +1,5 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.db import Base
@@ -13,7 +12,7 @@ class SeriesVersionRecord(Base):
     last_version = Column(Integer, nullable=False)
 
     @staticmethod
-    def next_version(session: Session | AsyncSession, series_id: str) -> int:
+    def next_version(session: Session, series_id: str) -> int:
         """
         @brief Atomically get the next version for a series.
 

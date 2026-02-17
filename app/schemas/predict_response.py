@@ -7,5 +7,6 @@ class PredictResponse(BaseModel):
     @var anomaly: Flag indicating whether the point is anomalous.
     @var model_version: Version identifier of the model used for prediction.
     """
+
     anomaly: bool
     model_version: str

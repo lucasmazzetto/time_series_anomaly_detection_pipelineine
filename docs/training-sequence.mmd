@@ -4,7 +4,7 @@ sequenceDiagram
     participant API as FastAPI /fit/{series_id}
     participant ASchema as TrainData Validator
     participant CoreSchema as TimeSeries/DataPoint
-    participant Service as AnomalyDetectionService
+    participant Service as TrainService
     participant Trainer as AnomalyDetectionTrainer
     participant Model as SimpleModel
     participant Store as LocalStorage
@@ -18,7 +18,7 @@ sequenceDiagram
     ASchema-->>API: TrainData
     API->>CoreSchema: Build TimeSeries(DataPoint[])
     CoreSchema-->>API: TimeSeries
-    API->>Service: train(series_id, time_series)
+    API->>Service: train(series_id, payload)
 
     Service->>Trainer: train(time_series)
     Trainer->>Model: fit(data)
@@ -30,12 +30,11 @@ sequenceDiagram
     Version->>DB: INSERT ... ON CONFLICT ... RETURNING
     DB-->>Version: next_version
     Version-->>ORM: next_version
-    ORM->>DB: INSERT + COMMIT
-    DB-->>ORM: committed
+    ORM->>DB: INSERT + FLUSH
     ORM-->>Service: version
 
     Service->>Store: save_state(series_id, version, state)
-    Store->>FS: Write .pkl model artifact
+    Store->>FS: Write .json model artifact
     FS-->>Store: model_path
     Store-->>Service: model_path
 
@@ -45,9 +44,9 @@ sequenceDiagram
     Store-->>Service: data_path
 
     Service->>ORM: update(model_path, data_path)
-    ORM->>DB: UPDATE + COMMIT
+    Service->>ORM: commit()
+    ORM->>DB: COMMIT
     DB-->>ORM: committed
-    ORM-->>Service: updated
 
-    Service-->>API: True/False
-    API-->>Client: TrainResponse
+    Service-->>API: TrainResponse
+    API-->>Client: 200 TrainResponse

@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import object_session
 
@@ -58,7 +57,7 @@ class AnomalyDetectionRecord(Base):
         )
 
     @staticmethod
-    def save(session: Session | AsyncSession, model: "AnomalyDetectionRecord") -> int:
+    def save(session: Session, model: "AnomalyDetectionRecord") -> int:
         """
         @brief Persist a record and return its version.
 
@@ -74,13 +73,12 @@ class AnomalyDetectionRecord(Base):
                 session, model.series_id
             )
         session.add(model)
-        session.commit()
-        session.refresh(model)
+        session.flush()
         return int(model.version)
 
     @staticmethod
     def get_last_model(
-        session: Session | AsyncSession, series_id: str
+        session: Session, series_id: str
     ) -> dict[str, Any]:
         """
         @brief Retrieve the latest persisted model row for a series.
@@ -103,7 +101,7 @@ class AnomalyDetectionRecord(Base):
 
     @staticmethod
     def get_model_version(
-        session: Session | AsyncSession, series_id: str, version: int
+        session: Session, series_id: str, version: int
     ) -> dict[str, Any]:
         """
         @brief Retrieve a specific persisted model row for a series/version.
@@ -154,11 +152,12 @@ class AnomalyDetectionRecord(Base):
     
     def update(self, *, model_path: str | None, data_path: str | None) -> None:
         """
-        @brief Update storage paths and persist changes.
+        @brief Update storage paths in the current transaction.
 
         @param model_path New model path to store.
         @param data_path New data path to store.
         @return None
+        @throws RuntimeError If the record is detached from any session.
         """
         self.model_path = model_path
         self.data_path = data_path
@@ -169,5 +168,16 @@ class AnomalyDetectionRecord(Base):
         if session is None:
             raise RuntimeError("AnomalyDetectionRecord is not attached to a session")
         
-        session.add(self)
+    def commit(self) -> None:
+        """
+        @brief Commit current transaction for this record's session.
+
+        @return None
+        @throws RuntimeError If the record is detached from any session.
+        """
+        session = object_session(self)
+
+        if session is None:
+            raise RuntimeError("AnomalyDetectionRecord is not attached to a session")
+
         session.commit()
