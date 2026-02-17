@@ -1,6 +1,7 @@
 import plotly.express as px
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 
 from app.db import SessionLocal
 from app.database.anomaly_detection_record import AnomalyDetectionRecord
@@ -99,14 +100,31 @@ class PlotService:
         @param payload Training data points to be visualized.
         @return Full HTML document containing the rendered chart.
         """
-        timestamps = [str(point.timestamp) for point in payload.data]
+        timestamps = [point.timestamp for point in payload.data]
+        
+        date_time = [
+            datetime.fromtimestamp(point.timestamp, tz=timezone.utc).strftime(
+                "%Y-%m-%d %H:%M:%S.%f"
+            )
+            for point in payload.data
+        ]
+
         values = [point.value for point in payload.data]
 
         figure = px.bar(
-            x=timestamps,
+            x=date_time,
             y=values,
-            labels={"x": "timestamp", "y": "value"},
+            labels={"x": "Date and Time (UTC)", "y": "Value"},
             title=f"Training data for {series_id} (v{version})",
+        )
+
+        figure.update_traces(
+            customdata=timestamps,
+            hovertemplate=(
+                "Date and Time (UTC): %{x}<br>"
+                "Timestamp: %{customdata}<extra></extra><br>"
+                "Value: %{y}<br>"
+            ),
         )
         figure.update_layout(template="plotly_white")
 
