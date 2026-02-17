@@ -46,10 +46,12 @@ data/                 # Persisted artifacts (models/data)
   - Input validation and conversion (`TrainData -> TimeSeries`, `PredictData -> DataPoint`)
 - Persistence layer
   - Database metadata: `app/database/*.py`
+  - Redis latency cache access: `app/database/latency.py`
   - Artifact storage: `app/repositories/local_storage.py`
   - Session lifecycle: `app/db.py`
 - Middleware (`app/middleware/latency.py`)
   - Tracks latency for successful `/fit/*` and `/predict/*` requests
+  - Stores raw latency samples in Redis (bounded history via list trim)
 
 ## Runtime Components
 
@@ -59,11 +61,12 @@ data/                 # Persisted artifacts (models/data)
 - Services:
   - `TrainService` orchestrates training + metadata + artifact writes
   - `PredictService` resolves metadata/artifact and performs prediction
-  - `HealthCheckService` returns trained-series count and latency metrics
+  - `HealthCheckService` reads Redis raw latencies and computes avg/P95
   - `PlotService` resolves training-data metadata/artifact and renders Plotly HTML
 - Database entities:
   - `AnomalyDetectionRecord` in `anomaly_detection_models`
   - `SeriesVersionRecord` in `series_versions`
+  - `LatencyRecord` in Redis lists (`train_latencies`, `predict_latencies`)
 
 ## Endpoint Flows
 
@@ -86,9 +89,10 @@ data/                 # Persisted artifacts (models/data)
 
 ### `GET /healthcheck`
 
-1. Reads in-memory latency cache.
-2. Counts trained series from `series_versions`.
-3. Returns average and P95 for training/inference latency.
+1. Reads raw latency values from Redis lists (`train_latencies`, `predict_latencies`).
+2. Computes average and P95 in `HealthCheckService`.
+3. Counts trained series from `series_versions`.
+4. Returns latency metrics and trained-series counter.
 
 ### `GET /plot`
 
@@ -114,6 +118,8 @@ sequenceDiagram
     participant Record as AnomalyDetectionRecord
     participant Version as SeriesVersionRecord
     participant DB as PostgreSQL
+    participant Cache as LatencyRecord
+    participant Redis as Redis
     participant Store as LocalStorage
     participant FS as Local Filesystem
 
@@ -152,7 +158,8 @@ sequenceDiagram
 
     Service-->>Route: TrainResponse
     Route-->>MW: 200 response
-    MW->>MW: update train latency cache
+    MW->>Cache: push_latency(train, elapsed_ms)
+    Cache->>Redis: RPUSH + LTRIM
     MW-->>Client: 200 response
 ```
 
@@ -180,6 +187,8 @@ sequenceDiagram
     participant Record as AnomalyDetectionRecord
     participant Version as SeriesVersionRecord
     participant DB as PostgreSQL
+    participant Cache as LatencyRecord
+    participant Redis as Redis
     participant Store as LocalStorage
     participant FS as Local Filesystem
 
@@ -218,7 +227,8 @@ sequenceDiagram
 
     Service-->>Route: TrainResponse
     Route-->>MW: 200 response
-    MW->>MW: update train latency cache
+    MW->>Cache: push_latency(train, elapsed_ms)
+    Cache->>Redis: RPUSH + LTRIM
     MW-->>Client: 200 response
 ```
 
@@ -233,15 +243,23 @@ sequenceDiagram
     participant MW as Latency Middleware
     participant Route as FastAPI /healthcheck
     participant Service as HealthCheckService
-    participant Cache as Latency Cache
+    participant Cache as LatencyRecord
+    participant Redis as Redis
     participant Version as SeriesVersionRecord
     participant DB as PostgreSQL
 
     Client->>MW: GET /healthcheck
     MW->>Route: call_next(request)
     Route->>Service: healthcheck(session)
-    Service->>Cache: get_latency_cache()
-    Cache-->>Service: train/predict avg+p95 buckets
+    Service->>Cache: get_latencies(train)
+    Cache->>Redis: LRANGE train_latencies
+    Redis-->>Cache: train latency list
+    Cache-->>Service: train latencies
+    Service->>Cache: get_latencies(predict)
+    Cache->>Redis: LRANGE predict_latencies
+    Redis-->>Cache: predict latency list
+    Cache-->>Service: predict latencies
+    Service->>Service: compute avg + p95
     Service->>Version: count_series(session)
     Version->>DB: SELECT COUNT(series_id)
     DB-->>Version: total trained series
@@ -313,6 +331,8 @@ sequenceDiagram
 
 - `DATABASE_URL`: `postgresql+psycopg2://postgres:postgres@db:5432/postgres`
 - `MIN_TRAINING_DATA_POINTS`: `3`
+- `REDIS_URL`: `redis://redis:6379/0`
+- `LATENCY_HISTORY_LIMIT`: `10`
 - Storage fallback folders:
   - model state: `./data/models`
   - training data: `./data/data`
@@ -327,3 +347,6 @@ sequenceDiagram
   - invalid inputs -> HTTP `422` or `400` (service defensive checks)
   - missing metadata/artifact -> HTTP `404`
   - missing `model_path` or unexpected errors -> HTTP `500`
+- Latency cache/healthcheck:
+  - middleware Redis write failures are logged and ignored (request still succeeds)
+  - healthcheck Redis read failures return zeroed latency metrics
