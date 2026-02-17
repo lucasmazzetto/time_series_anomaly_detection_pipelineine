@@ -9,6 +9,8 @@ sequenceDiagram
     participant Record as AnomalyDetectionRecord
     participant Version as SeriesVersionRecord
     participant DB as PostgreSQL
+    participant Cache as LatencyRecord
+    participant Redis as Redis
     participant Store as LocalStorage
     participant FS as Local Filesystem
 
@@ -47,5 +49,6 @@ sequenceDiagram
 
     Service-->>Route: TrainResponse
     Route-->>MW: 200 response
-    MW->>MW: update train latency cache
+    MW->>Cache: push_latency(train, elapsed_ms)
+    Cache->>Redis: RPUSH + LTRIM
     MW-->>Client: 200 response

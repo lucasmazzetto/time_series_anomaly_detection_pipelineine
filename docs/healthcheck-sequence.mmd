@@ -4,15 +4,23 @@ sequenceDiagram
     participant MW as Latency Middleware
     participant Route as FastAPI /healthcheck
     participant Service as HealthCheckService
-    participant Cache as Latency Cache
+    participant Cache as LatencyRecord
+    participant Redis as Redis
     participant Version as SeriesVersionRecord
     participant DB as PostgreSQL
 
     Client->>MW: GET /healthcheck
     MW->>Route: call_next(request)
     Route->>Service: healthcheck(session)
-    Service->>Cache: get_latency_cache()
-    Cache-->>Service: train/predict avg+p95 buckets
+    Service->>Cache: get_latencies(train)
+    Cache->>Redis: LRANGE train_latencies
+    Redis-->>Cache: raw latency list
+    Cache-->>Service: train latencies
+    Service->>Cache: get_latencies(predict)
+    Cache->>Redis: LRANGE predict_latencies
+    Redis-->>Cache: raw latency list
+    Cache-->>Service: predict latencies
+    Service->>Service: compute avg + p95
     Service->>Version: count_series(session)
     Version->>DB: SELECT COUNT(series_id)
     DB-->>Version: total trained series
