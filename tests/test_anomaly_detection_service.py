@@ -3,10 +3,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from app.schemas import DataPoint, ModelState, TimeSeries, TrainResponse
+from app.schemas.data_point import DataPoint
+from app.schemas.model_state import ModelState
+from app.schemas.predict_response import PredictResponse
+from app.schemas.time_series import TimeSeries
+from app.schemas.train_response import TrainResponse
 from app.services.predict_service import PredictService
 from app.services.train_service import TrainService
-from app.schemas import PredictResponse
 
 
 def _sample_series() -> TimeSeries:

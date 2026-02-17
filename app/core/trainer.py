@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional
-from app.schemas import TimeSeries, ModelState
 from app.core.model import Model
+from app.schemas.model_state import ModelState
+from app.schemas.time_series import TimeSeries
 
 
 class Trainer(ABC):

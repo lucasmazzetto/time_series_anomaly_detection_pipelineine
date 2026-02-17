@@ -1,21 +1,23 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 
 from app.core.simple_model import SimpleModel
 from app.db import get_session
 from app.repositories.local_storage import LocalStorage
-from app.schemas import PredictData, PredictVersion
+from app.schemas.predict_data import PredictData
+from app.schemas.predict_response import PredictResponse
+from app.schemas.predict_version import PredictVersion
+from app.schemas.series_id import SeriesId
 from app.services.predict_service import PredictService
-from app.schemas import PredictResponse
 
 router = APIRouter(tags=["Prediction"])
 
 
 @router.post("/predict/{series_id}", response_model=PredictResponse)
 def predict(
-    series_id: str,
+    series_id: Annotated[SeriesId, Path()],
     payload: PredictData,
     version: Annotated[PredictVersion, Query()] = PredictVersion(version="0"),
     session: Session = Depends(get_session),

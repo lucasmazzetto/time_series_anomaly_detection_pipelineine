@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.db import get_session
 from app.main import app
-from app.schemas import PredictResponse
+from app.schemas.predict_response import PredictResponse
 
 
 client = TestClient(app)
@@ -113,6 +113,25 @@ def test_predict_endpoint_rejects_negative_version():
     errors = response.json()["detail"]
     assert any(
         "Version must contain at least one digit." in error["msg"]
+        for error in errors
+    )
+    predict_mock.assert_not_called()
+
+
+def test_predict_endpoint_rejects_blank_series_id():
+    """@brief Verify whitespace series_id path values are rejected with 422.
+
+    @details Validation must happen before the prediction service runs.
+    """
+    payload = {"timestamp": "1700000004", "value": 6.0}
+
+    with patch("app.api.predict.PredictService.predict") as predict_mock:
+        response = client.post("/predict/%20%20", json=payload)
+
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    assert any(
+        "series_id must be a non-empty string." in error["msg"]
         for error in errors
     )
     predict_mock.assert_not_called()

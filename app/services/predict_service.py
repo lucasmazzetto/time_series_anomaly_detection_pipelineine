@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.database.anomaly_detection_record import AnomalyDetectionRecord
 from app.repositories.storage import Storage
-from app.schemas import DataPoint, PredictData, PredictResponse
+from app.schemas.data_point import DataPoint
+from app.schemas.predict_data import PredictData
+from app.schemas.predict_response import PredictResponse
 
 
 class PredictService:

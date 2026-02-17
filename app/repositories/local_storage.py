@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from app.repositories.storage import Storage
-from app.schemas import ModelState, TimeSeries
+from app.schemas.model_state import ModelState
+from app.schemas.time_series import TimeSeries
 from app.utils.params import load_params as get_params
 
 

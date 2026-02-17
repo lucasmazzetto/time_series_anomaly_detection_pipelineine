@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from app.schemas import ModelState, TimeSeries
+from app.schemas.model_state import ModelState
+from app.schemas.time_series import TimeSeries
 
 
 class Storage(ABC):

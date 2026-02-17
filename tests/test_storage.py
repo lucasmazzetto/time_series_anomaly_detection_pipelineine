@@ -4,8 +4,10 @@ import pickle
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import DataPoint, ModelState, TimeSeries
 from app.repositories.local_storage import LocalStorage
+from app.schemas.data_point import DataPoint
+from app.schemas.model_state import ModelState
+from app.schemas.time_series import TimeSeries
 
 
 def _sample_series() -> TimeSeries:

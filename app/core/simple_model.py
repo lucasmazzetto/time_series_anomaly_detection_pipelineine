@@ -3,7 +3,9 @@ from typing import Any, Callable, Optional
 import numpy as np
 
 from app.core.model import Model
-from app.schemas import DataPoint, ModelState, TimeSeries
+from app.schemas.data_point import DataPoint
+from app.schemas.model_state import ModelState
+from app.schemas.time_series import TimeSeries
 
 
 class SimpleModel(Model):

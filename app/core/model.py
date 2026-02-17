@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Optional
 
-from app.schemas import DataPoint, ModelState, TimeSeries
+from app.schemas.data_point import DataPoint
+from app.schemas.model_state import ModelState
+from app.schemas.time_series import TimeSeries
 
 
 class Model(ABC):

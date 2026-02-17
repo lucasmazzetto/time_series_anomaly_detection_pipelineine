@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Path
 from sqlalchemy.orm import Session
 
 from app.db import get_session
+from app.schemas.series_id import SeriesId
+from app.schemas.train_data import TrainData
+from app.schemas.train_response import TrainResponse
 from app.services.train_service import TrainService
-from app.schemas import TrainData, TrainResponse
 
 from app.core.trainer import AnomalyDetectionTrainer
 from app.core.simple_model import SimpleModel
@@ -13,7 +17,9 @@ router = APIRouter(tags=["train"])
 
 @router.post("/fit/{series_id}", response_model=TrainResponse)
 def train(
-    series_id: str, payload: TrainData, session: Session = Depends(get_session)
+    series_id: Annotated[SeriesId, Path()],
+    payload: TrainData,
+    session: Session = Depends(get_session),
 ) -> TrainResponse:
     """@brief Start training for a series and persist its artifacts.
 
