@@ -1,4 +1,3 @@
-import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
@@ -8,6 +7,7 @@ from alembic import context
 from app.db import Base
 from app.database import anomaly_detection as _model  # noqa: F401
 from app.database import series_version as _series_version  # noqa: F401
+from app.utils.env import get_database_url
 
 config = context.config
 
@@ -18,10 +18,7 @@ target_metadata = Base.metadata
 
 
 def _get_database_url() -> str:
-    return os.getenv(
-        "DATABASE_URL",
-        "postgresql+psycopg2://postgres:postgres@db:5432/postgres",
-    )
+    return get_database_url()
 
 def run_migrations_offline() -> None:
     url = _get_database_url()

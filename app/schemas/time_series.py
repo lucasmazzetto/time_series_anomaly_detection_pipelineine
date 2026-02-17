@@ -3,7 +3,7 @@ from typing import Sequence
 from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.data_point import DataPoint
-from app.utils.env import load_min_training_data_points
+from app.utils.env import get_min_training_data_points
 
 
 class TimeSeries(BaseModel):
@@ -39,8 +39,7 @@ class TimeSeries(BaseModel):
 
     def validate_for_training(self) -> "TimeSeries":
         """@brief Apply training preflight validation rules."""
-        params = load_min_training_data_points()
-        min_points = int(params.get("min_training_data_points"))
+        min_points = get_min_training_data_points()
 
         if len(self.data) < min_points:
             raise ValueError(
