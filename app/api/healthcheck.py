@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_session
 from app.schemas.healthcheck import HealthCheckResponse
-from app.services.healthcheck_service import HealthCheckService
+from app.services.healthcheck import HealthCheckService
 
 router = APIRouter(tags=["Health Check"])
 

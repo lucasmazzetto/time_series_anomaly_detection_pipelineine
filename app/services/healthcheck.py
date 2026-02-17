@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.database.series_version_record import SeriesVersionRecord
+from app.database.series_version import SeriesVersionRecord
 from app.middleware.latency import get_latency_cache
 from app.schemas.healthcheck import HealthCheckResponse, Metrics
 

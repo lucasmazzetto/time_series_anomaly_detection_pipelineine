@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from app.db import SessionLocal
-from app.database.anomaly_detection_record import AnomalyDetectionRecord
+from app.database.anomaly_detection import AnomalyDetectionRecord
 from app.repositories.local_storage import LocalStorage
 from app.repositories.storage import Storage
 from app.schemas.time_series import TimeSeries

@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from app.database.anomaly_detection_record import AnomalyDetectionRecord
+from app.database.anomaly_detection import AnomalyDetectionRecord
 from app.repositories.storage import Storage
 from app.schemas.data_point import DataPoint
 from app.schemas.predict_data import PredictData
