@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.database.anomaly_detection_record import AnomalyDetectionRecord
@@ -54,6 +55,7 @@ class PredictService:
             return AnomalyDetectionRecord.get_model_version(
                 self._session, series_id, version
             )
+        # Convert missing-model metadata into a resource-not-found API response.
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -82,10 +84,17 @@ class PredictService:
         """
         try:
             data_point = self._to_data_point(payload)
+        # Preserve native Pydantic validation payloads for client-side field mapping.
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=exc.errors(),
+            ) from exc
+        # Domain/value conversion errors are returned as a generic 422 message.
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=[{"loc": ["body"], "msg": str(exc), "type": "value_error"}],
+                detail=str(exc),
             ) from exc
 
         self._validate_predict_inputs(series_id, version)
@@ -105,13 +114,16 @@ class PredictService:
             state = self.storage.load_state(model_path)
             self.model.load(state)
             prediction = bool(self.model.predict(data_point))
+        # Missing artifact on disk is a client-visible not-found condition.
         except FileNotFoundError as exc:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Model artifact was not found at path '{model_path}'.",
             ) from exc
+        # Re-raise expected HTTP failures from downstream operations.
         except HTTPException:
             raise
+        # Collapse unexpected runtime failures into a stable 500 response.
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -1,5 +1,4 @@
 import json
-import pickle
 
 import pytest
 from pydantic import ValidationError
@@ -20,7 +19,7 @@ def _sample_series() -> TimeSeries:
 
 
 def test_local_storage_saves_state_to_disk(tmp_path, monkeypatch):
-    """@brief Verify model state is persisted to disk as a pickle.
+    """@brief Verify model state is persisted to disk as JSON.
 
     @details Ensures the storage path respects environment overrides,
     creates the expected file, and serializes the model state payload.
@@ -35,12 +34,12 @@ def test_local_storage_saves_state_to_disk(tmp_path, monkeypatch):
     storage = LocalStorage()
     file_path = storage.save_state(series_id, version, state)
 
-    saved_path = model_dir / series_id / f"{series_id}_model_v{version}.pkl"
+    saved_path = model_dir / series_id / f"{series_id}_model_v{version}.json"
     assert file_path == str(saved_path)
     assert saved_path.exists()
 
-    with saved_path.open("rb") as file_obj:
-        payload = pickle.load(file_obj)
+    with saved_path.open("r", encoding="utf-8") as file_obj:
+        payload = json.load(file_obj)
 
     assert payload == state.model_dump(mode="json")
 
@@ -74,7 +73,7 @@ def test_local_storage_saves_data_to_disk(tmp_path, monkeypatch):
 def test_local_storage_loads_state_from_disk(tmp_path):
     """@brief Verify load_state restores a serialized model state payload.
 
-    @details Ensures the method reads pickle content and validates it as
+    @details Ensures the method reads JSON content and validates it as
     `ModelState` before returning.
     """
     state = ModelState(
@@ -82,10 +81,10 @@ def test_local_storage_loads_state_from_disk(tmp_path):
         parameters={"mean": 2.0, "std": 0.5},
         metrics={"samples": 10},
     )
-    saved_path = tmp_path / "model_state.pkl"
+    saved_path = tmp_path / "model_state.json"
 
-    with saved_path.open("wb") as file_obj:
-        pickle.dump(state.model_dump(mode="json"), file_obj)
+    with saved_path.open("w", encoding="utf-8") as file_obj:
+        json.dump(state.model_dump(mode="json"), file_obj)
 
     storage = LocalStorage()
     loaded = storage.load_state(str(saved_path))
@@ -97,14 +96,14 @@ def test_local_storage_loads_state_from_disk(tmp_path):
 def test_local_storage_load_state_rejects_invalid_payload(tmp_path):
     """@brief Verify load_state validates payload shape and types.
 
-    @details Ensures malformed pickle content fails with Pydantic validation
+    @details Ensures malformed JSON content fails with Pydantic validation
     instead of returning a partially invalid state object.
     """
-    saved_path = tmp_path / "invalid_model_state.pkl"
+    saved_path = tmp_path / "invalid_model_state.json"
     invalid_payload = {"model": "anomaly_detection_model"}  # Missing parameters
 
-    with saved_path.open("wb") as file_obj:
-        pickle.dump(invalid_payload, file_obj)
+    with saved_path.open("w", encoding="utf-8") as file_obj:
+        json.dump(invalid_payload, file_obj)
 
     storage = LocalStorage()
 

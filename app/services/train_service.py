@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.trainer import Trainer
@@ -71,15 +72,25 @@ class TrainService:
                 success=True,
             )
 
+        # Preserve native Pydantic validation payloads for client-side field mapping.
+        except ValidationError as exc:
+            self._session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=exc.errors(),
+            ) from exc
+        # Domain/value preflight errors are returned as a generic 422 message.
         except ValueError as exc:
             self._session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=[{"loc": ["body"], "msg": str(exc), "type": "value_error"}],
+                detail=str(exc),
             ) from exc
+        # Re-raise expected HTTP failures after transaction rollback.
         except HTTPException:
             self._session.rollback()
             raise
+        # Collapse unexpected runtime failures into a stable 500 response.
         except Exception as exc:
             self._session.rollback()
             raise HTTPException(

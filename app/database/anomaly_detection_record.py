@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import object_session
 
@@ -58,7 +57,7 @@ class AnomalyDetectionRecord(Base):
         )
 
     @staticmethod
-    def save(session: Session | AsyncSession, model: "AnomalyDetectionRecord") -> int:
+    def save(session: Session, model: "AnomalyDetectionRecord") -> int:
         """
         @brief Persist a record and return its version.
 
@@ -79,7 +78,7 @@ class AnomalyDetectionRecord(Base):
 
     @staticmethod
     def get_last_model(
-        session: Session | AsyncSession, series_id: str
+        session: Session, series_id: str
     ) -> dict[str, Any]:
         """
         @brief Retrieve the latest persisted model row for a series.
@@ -102,7 +101,7 @@ class AnomalyDetectionRecord(Base):
 
     @staticmethod
     def get_model_version(
-        session: Session | AsyncSession, series_id: str, version: int
+        session: Session, series_id: str, version: int
     ) -> dict[str, Any]:
         """
         @brief Retrieve a specific persisted model row for a series/version.

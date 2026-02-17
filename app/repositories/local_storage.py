@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import pickle
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +40,7 @@ class LocalStorage(Storage):
         return Path(fallback)
 
     def save_state(self, series_id: str, version: int, state: ModelState) -> str:
-        """@brief Save model state locally as a pickle file.
+        """@brief Save model state locally as a JSON file.
 
         @param series_id Identifier for the time series.
         @param version Model version to persist.
@@ -57,12 +56,10 @@ class LocalStorage(Storage):
         )
         series_folder = folder / series_id
         series_folder.mkdir(parents=True, exist_ok=True)
-        file_path = series_folder / f"{series_id}_model_v{version}.pkl"
+        file_path = series_folder / f"{series_id}_model_v{version}.json"
 
-        with file_path.open("wb") as file_obj:
-            pickle.dump(
-                state.model_dump(mode="json"), file_obj, protocol=pickle.HIGHEST_PROTOCOL
-            )
+        with file_path.open("w", encoding="utf-8") as file_obj:
+            json.dump(state.model_dump(mode="json"), file_obj)
 
         return str(file_path)
 
@@ -91,13 +88,13 @@ class LocalStorage(Storage):
         return str(file_path)
 
     def load_state(self, model_path: str) -> ModelState:
-        """@brief Load model state from a pickle file.
+        """@brief Load model state from a JSON file.
 
         @param model_path Filesystem path to the persisted model state.
         @return Deserialized model state payload.
         """
         file_path = Path(model_path)
-        with file_path.open("rb") as file_obj:
-            raw_state = pickle.load(file_obj)
+        with file_path.open("r", encoding="utf-8") as file_obj:
+            raw_state = json.load(file_obj)
 
         return ModelState.model_validate(raw_state)

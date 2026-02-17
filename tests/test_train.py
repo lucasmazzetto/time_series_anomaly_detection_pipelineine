@@ -133,7 +133,9 @@ def test_fit_endpoint_rejects_constant_values():
     response = client.post(f"/fit/{series_id}", json=payload)
 
     assert response.status_code == 422
-    assert "constant" in response.json()["detail"][0]["msg"].lower()
+    detail = response.json()["detail"]
+    assert isinstance(detail, str)
+    assert "constant" in detail.lower()
 
 
 def test_fit_endpoint_rejects_non_numeric_values():
