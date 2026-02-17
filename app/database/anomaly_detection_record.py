@@ -157,6 +157,7 @@ class AnomalyDetectionRecord(Base):
         @param model_path New model path to store.
         @param data_path New data path to store.
         @return None
+        @throws RuntimeError If the record is detached from any session.
         """
         self.model_path = model_path
         self.data_path = data_path
@@ -172,6 +173,7 @@ class AnomalyDetectionRecord(Base):
         @brief Commit current transaction for this record's session.
 
         @return None
+        @throws RuntimeError If the record is detached from any session.
         """
         session = object_session(self)
 
