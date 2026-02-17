@@ -13,21 +13,22 @@ class PredictVersion(BaseModel):
     @field_validator("version")
     @classmethod
     def sanitize_version(cls, version: str) -> str:
-        """@brief Sanitize version input keeping only numeric characters.
+        """@brief Validate and normalize version input.
 
         @param version Raw version value received from query string.
-        @return Sanitized numeric version string.
+        @return Normalized numeric version string.
         """
         if isinstance(version, bool):
             raise ValueError("Version must be a string or integer-like value.")
 
-        # Keep only ASCII digits to neutralize querystring noise/injection payloads.
         value = str(version).strip()
-        digits_only = re.sub(r"[^0-9]", "", value)
-        if not digits_only:
+        if not re.fullmatch(r"[vV]?\d+", value):
             raise ValueError("Version must contain at least one digit.")
 
-        return digits_only
+        if value.startswith(("v", "V")):
+            return value[1:]
+
+        return value
 
     def to_int(self) -> int:
         """@brief Convert sanitized version string into integer.

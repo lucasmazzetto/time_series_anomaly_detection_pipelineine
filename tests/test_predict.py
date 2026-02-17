@@ -93,3 +93,26 @@ def test_predict_endpoint_rejects_non_numeric_version():
         for error in errors
     )
     predict_mock.assert_not_called()
+
+
+def test_predict_endpoint_rejects_negative_version():
+    """@brief Verify negative version values are rejected with 422.
+
+    @details Ensures values like `-1` do not get normalized to positive
+    versions and are rejected before service execution.
+    """
+    series_id = "series_predict_negative_version"
+    payload = {"timestamp": "1700000003", "value": 6.5}
+
+    with patch(
+        "app.api.predict.PredictService.predict"
+    ) as predict_mock:
+        response = client.post(f"/predict/{series_id}?version=-1", json=payload)
+
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    assert any(
+        "Version must contain at least one digit." in error["msg"]
+        for error in errors
+    )
+    predict_mock.assert_not_called()
