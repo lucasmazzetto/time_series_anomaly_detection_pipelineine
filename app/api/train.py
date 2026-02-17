@@ -7,7 +7,7 @@ from app.db import get_session
 from app.schemas.series_id import SeriesId
 from app.schemas.train_data import TrainData
 from app.schemas.train_response import TrainResponse
-from app.services.train_service import TrainService
+from app.services.train import TrainService
 
 from app.core.trainer import AnomalyDetectionTrainer
 from app.core.simple_model import SimpleModel

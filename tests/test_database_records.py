@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy.sql.dml import Insert
 
-from app.database.anomaly_detection_record import AnomalyDetectionRecord
-from app.database.series_version_record import SeriesVersionRecord
+from app.database.anomaly_detection import AnomalyDetectionRecord
+from app.database.series_version import SeriesVersionRecord
 
 
 def test_anomaly_detection_record_build_sets_fields_and_timestamps():
@@ -17,7 +17,7 @@ def test_anomaly_detection_record_build_sets_fields_and_timestamps():
     fixed_time = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
     with patch(
-        "app.database.anomaly_detection_record.AnomalyDetectionRecord._timestamp",
+        "app.database.anomaly_detection.AnomalyDetectionRecord._timestamp",
         return_value=fixed_time,
     ):
         record = AnomalyDetectionRecord.build(
@@ -45,7 +45,7 @@ def test_anomaly_detection_record_save_assigns_version_and_persists():
     record = AnomalyDetectionRecord.build(series_id="series_y")
 
     with patch(
-        "app.database.anomaly_detection_record.SeriesVersionRecord.next_version",
+        "app.database.anomaly_detection.SeriesVersionRecord.next_version",
         return_value=4,
     ) as next_version_mock:
         version = AnomalyDetectionRecord.save(session, record)
@@ -67,7 +67,7 @@ def test_anomaly_detection_record_save_keeps_existing_version():
     record = AnomalyDetectionRecord.build(series_id="series_z", version=2)
 
     with patch(
-        "app.database.anomaly_detection_record.SeriesVersionRecord.next_version"
+        "app.database.anomaly_detection.SeriesVersionRecord.next_version"
     ) as next_version_mock:
         version = AnomalyDetectionRecord.save(session, record)
 
@@ -88,7 +88,7 @@ def test_anomaly_detection_record_update_updates_changes_without_commit():
     session = MagicMock()
 
     with patch(
-        "app.database.anomaly_detection_record.object_session",
+        "app.database.anomaly_detection.object_session",
         return_value=session,
     ):
         record.update(model_path="/tmp/m.pkl", data_path="/tmp/d.json")
@@ -107,7 +107,7 @@ def test_anomaly_detection_record_update_raises_without_session():
     record = AnomalyDetectionRecord.build(series_id="series_n", version=1)
 
     with patch(
-        "app.database.anomaly_detection_record.object_session", return_value=None
+        "app.database.anomaly_detection.object_session", return_value=None
     ):
         with pytest.raises(RuntimeError, match="not attached to a session"):
             record.update(model_path="/tmp/m.pkl", data_path="/tmp/d.json")
@@ -119,7 +119,7 @@ def test_anomaly_detection_record_commit_persists_transaction():
     session = MagicMock()
 
     with patch(
-        "app.database.anomaly_detection_record.object_session",
+        "app.database.anomaly_detection.object_session",
         return_value=session,
     ):
         record.commit()
@@ -132,7 +132,7 @@ def test_anomaly_detection_record_commit_raises_without_session():
     record = AnomalyDetectionRecord.build(series_id="series_detached", version=1)
 
     with patch(
-        "app.database.anomaly_detection_record.object_session", return_value=None
+        "app.database.anomaly_detection.object_session", return_value=None
     ):
         with pytest.raises(RuntimeError, match="not attached to a session"):
             record.commit()

@@ -10,7 +10,7 @@ from app.schemas.predict_data import PredictData
 from app.schemas.predict_response import PredictResponse
 from app.schemas.predict_version import Version
 from app.schemas.series_id import SeriesId
-from app.services.predict_service import PredictService
+from app.services.predict import PredictService
 
 router = APIRouter(tags=["Prediction"])
 

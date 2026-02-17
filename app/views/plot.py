@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 
 from app.schemas.predict_version import Version
 from app.schemas.series_id import SeriesId
-from app.services.plot_service import PlotService
+from app.services.plot import PlotService
 
 router = APIRouter(tags=["View"])
 

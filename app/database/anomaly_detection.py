@@ -7,7 +7,7 @@ from sqlalchemy.orm import object_session
 from sqlalchemy import Column, DateTime, Integer, String
 
 from app.db import Base
-from app.database.series_version_record import SeriesVersionRecord
+from app.database.series_version import SeriesVersionRecord
 
 
 class AnomalyDetectionRecord(Base):

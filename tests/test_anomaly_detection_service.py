@@ -8,8 +8,8 @@ from app.schemas.model_state import ModelState
 from app.schemas.predict_response import PredictResponse
 from app.schemas.time_series import TimeSeries
 from app.schemas.train_response import TrainResponse
-from app.services.predict_service import PredictService
-from app.services.train_service import TrainService
+from app.services.predict import PredictService
+from app.services.train import TrainService
 
 
 def _sample_series() -> TimeSeries:
@@ -48,9 +48,9 @@ def test_train_success_saves_state_and_data():
     )
 
     with patch(
-        "app.services.train_service.AnomalyDetectionRecord.build"
+        "app.services.train.AnomalyDetectionRecord.build"
     ) as build_mock, patch(
-        "app.services.train_service.AnomalyDetectionRecord.save",
+        "app.services.train.AnomalyDetectionRecord.save",
         return_value=7,
     ) as save_mock:
         model = MagicMock()
@@ -96,9 +96,9 @@ def test_train_failure_rolls_back_and_raises_500():
     )
 
     with patch(
-        "app.services.train_service.AnomalyDetectionRecord.build"
+        "app.services.train.AnomalyDetectionRecord.build"
     ) as build_mock, patch(
-        "app.services.train_service.AnomalyDetectionRecord.save"
+        "app.services.train.AnomalyDetectionRecord.save"
     ) as save_mock:
         with pytest.raises(HTTPException) as exc:
             service.train(series_id, payload)
@@ -133,10 +133,10 @@ def test_predict_latest_version_returns_predict_response():
     )
 
     with patch(
-        "app.services.predict_service.AnomalyDetectionRecord.get_last_model",
+        "app.services.predict.AnomalyDetectionRecord.get_last_model",
         return_value={"version": 6, "model_path": "/tmp/model_v6.pkl"},
     ) as get_last_mock, patch(
-        "app.services.predict_service.AnomalyDetectionRecord.get_model_version"
+        "app.services.predict.AnomalyDetectionRecord.get_model_version"
     ) as get_version_mock:
         response = service.predict("series_predict", 0, payload)
 
@@ -170,7 +170,7 @@ def test_predict_specific_version_uses_requested_model():
     )
 
     with patch(
-        "app.services.predict_service.AnomalyDetectionRecord.get_model_version",
+        "app.services.predict.AnomalyDetectionRecord.get_model_version",
         return_value={"version": 2, "model_path": "/tmp/model_v2.pkl"},
     ) as get_version_mock:
         response = service.predict("series_predict", 2, payload)
@@ -220,7 +220,7 @@ def test_predict_raises_404_when_model_metadata_not_found():
     )
 
     with patch(
-        "app.services.predict_service.AnomalyDetectionRecord.get_model_version",
+        "app.services.predict.AnomalyDetectionRecord.get_model_version",
         side_effect=ValueError("Model version '3' not found for series_id 'x'."),
     ):
         with pytest.raises(HTTPException) as exc:
@@ -246,7 +246,7 @@ def test_predict_raises_500_when_model_path_missing():
     )
 
     with patch(
-        "app.services.predict_service.AnomalyDetectionRecord.get_model_version",
+        "app.services.predict.AnomalyDetectionRecord.get_model_version",
         return_value={"version": 4, "model_path": None},
     ):
         with pytest.raises(HTTPException) as exc:
@@ -274,7 +274,7 @@ def test_predict_raises_404_when_model_artifact_missing():
     )
 
     with patch(
-        "app.services.predict_service.AnomalyDetectionRecord.get_model_version",
+        "app.services.predict.AnomalyDetectionRecord.get_model_version",
         return_value={"version": 9, "model_path": "/tmp/missing.pkl"},
     ):
         with pytest.raises(HTTPException) as exc:
@@ -304,7 +304,7 @@ def test_predict_raises_500_for_unexpected_runtime_errors():
     )
 
     with patch(
-        "app.services.predict_service.AnomalyDetectionRecord.get_model_version",
+        "app.services.predict.AnomalyDetectionRecord.get_model_version",
         return_value={"version": 8, "model_path": "/tmp/model_v8.pkl"},
     ):
         with pytest.raises(HTTPException) as exc:
