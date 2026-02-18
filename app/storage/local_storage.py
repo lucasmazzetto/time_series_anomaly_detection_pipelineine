@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.repositories.storage import Storage
+from app.storage.storage import Storage
 from app.schemas.model_state import ModelState
 from app.schemas.time_series import TimeSeries
 from app.utils.env import get_model_state_folder, get_training_data_folder

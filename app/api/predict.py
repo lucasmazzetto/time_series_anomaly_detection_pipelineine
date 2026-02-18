@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.simple_model import SimpleModel
 from app.db import get_session
-from app.repositories.local_storage import LocalStorage
+from app.storage.local_storage import LocalStorage
 from app.schemas.predict_data import PredictData
 from app.schemas.predict_response import PredictResponse
 from app.schemas.predict_version import Version
