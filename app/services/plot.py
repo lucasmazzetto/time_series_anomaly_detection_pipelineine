@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 from app.db import SessionLocal
 from app.database.anomaly_detection import AnomalyDetectionRecord
-from app.repositories.local_storage import LocalStorage
-from app.repositories.storage import Storage
+from app.storage.local_storage import LocalStorage
+from app.storage.storage import Storage
 from app.schemas.time_series import TimeSeries
 
 

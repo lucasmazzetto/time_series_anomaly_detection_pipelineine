@@ -3,7 +3,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from app.repositories.local_storage import LocalStorage
+from app.storage.local_storage import LocalStorage
 from app.schemas.data_point import DataPoint
 from app.schemas.model_state import ModelState
 from app.schemas.time_series import TimeSeries

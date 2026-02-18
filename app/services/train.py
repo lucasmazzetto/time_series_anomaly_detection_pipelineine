@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.trainer import Trainer
 from app.database.anomaly_detection import AnomalyDetectionRecord
-from app.repositories.storage import Storage
+from app.storage.storage import Storage
 from app.schemas.time_series import TimeSeries
 from app.schemas.train_data import TrainData
 from app.schemas.train_response import TrainResponse

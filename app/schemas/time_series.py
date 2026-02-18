@@ -11,7 +11,7 @@ class TimeSeries(BaseModel):
 
     @details Used by training request conversion (`app/schemas/train_data.py`),
     model/trainer contracts (`app/core/model.py`, `app/core/trainer.py`),
-    storage (`app/repositories/storage.py`), and training service flows
+    storage (`app/storage/storage.py`), and training service flows
     (`app/services/train_service.py`).
 
     @note Validation rules:

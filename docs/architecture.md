@@ -17,7 +17,7 @@ app/
   services/           # Application use-cases
   core/               # Model/trainer abstractions and implementation
   schemas/            # Request/response/domain validation models
-  repositories/       # Storage interface + local filesystem adapter
+  storage/       # Storage interface + local filesystem adapter
   database/           # ORM entities and query helpers
   db.py               # Engine/session configuration
   main.py             # App bootstrap and route registration
@@ -47,7 +47,7 @@ data/                 # Persisted artifacts (models/data)
 - Persistence layer
   - Database metadata: `app/database/*.py`
   - Redis latency cache access: `app/database/latency.py`
-  - Artifact storage: `app/repositories/local_storage.py`
+  - Artifact storage: `app/storage/local_storage.py`
   - Session lifecycle: `app/db.py`
 - Middleware (`app/middleware/latency.py`)
   - Tracks latency for successful `/fit/*` and `/predict/*` requests
