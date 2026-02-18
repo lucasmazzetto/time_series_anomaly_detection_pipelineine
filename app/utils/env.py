@@ -79,7 +79,7 @@ def get_latency_history_limit() -> int:
 
     @return Integer history limit from `LATENCY_HISTORY_LIMIT` (default `500`).
     """
-    return int(os.getenv("LATENCY_HISTORY_LIMIT", "10"))
+    return int(os.getenv("LATENCY_HISTORY_LIMIT", "100"))
 
 
 def get_redis_url() -> str:
