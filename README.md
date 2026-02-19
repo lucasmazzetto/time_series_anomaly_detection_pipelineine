@@ -4,7 +4,6 @@ This project provides a simple API for univariate time-series anomaly detection 
 
 Main frameworks and tools used in this project:
 
-> [!Frameworks and tools]
 > - [FastAPI](https://fastapi.tiangolo.com/): HTTP API routes and request/response handling
 > - [Pydantic](https://docs.pydantic.dev/): schema validation and data parsing
 > - [SQLAlchemy](https://www.sqlalchemy.org/): ORM and database access layer
@@ -46,13 +45,12 @@ Stop containers:
 docker compose down
 ```
 
-This `docker-compose.yml` is designed for local development:
-
-- Builds the API image from `Dockerfile`
-- Pulls PostgreSQL and Redis images
-- Wires all services together for local execution
-
-If PostgreSQL and Redis are hosted in distributed or managed servers, you can split or adapt the compose file and point the API to external services via `.env`.
+> [!NOTE]
+> This `docker-compose.yml` is designed for local development: it builds
+> the API image from `Dockerfile`, pulls PostgreSQL and Redis images, and
+> wires all services for local execution. If PostgreSQL and Redis are hosted
+> in distributed or managed servers, you can split or adapt the compose file
+> and point the API to external services via `.env`.
 
 ## 🚀 API
 
