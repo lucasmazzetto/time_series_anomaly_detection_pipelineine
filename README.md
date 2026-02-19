@@ -123,15 +123,22 @@ This project includes a stress benchmark jupyter notebook.
 **Summary usage:**
 
 1. Start the stack (`docker compose up --build`)
-2. Install notebook dependencies on your host machine:
+2. Create and activate a virtual environment on your host machine:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+3. Install notebook dependencies on your host machine:
 
 ```bash
 pip install -r benchmark/requirements.txt
 ```
 
-3. Open the notebook on your host machine (outside Docker)
-4. Set `BASE_URL` (usually `http://localhost:8000`)
-5. Run all cells
+4. Open the notebook on your host machine (outside Docker)
+5. Set `BASE_URL` (usually `http://localhost:8000`)
+6. Run all cells
 
 Full instructions at: [benchmark/README.md](benchmark/README.md)
 
@@ -154,6 +161,18 @@ Default environment variables from `.env.example`:
 | `MODEL_FOLDER` | `./data/models` | Backward-compatible alias for model folder |
 | `TRAINING_DATA_FOLDER` | `./data/data` | Folder for persisted training datasets |
 | `DATA_FOLDER` | `./data/data` | Backward-compatible alias for data folder |
+
+## 📈 Scalability
+
+To scale this project, run multiple stateless API instances behind a reverse proxy/load balancer (for example NGINX, Traefik, or a cloud LB) and distribute traffic across replicas. Keep persistence services shared: connect all API instances to central PostgreSQL (metadata/model versions) and Redis (telemetry/cache), ideally with managed/high-availability setups.
+
+Artifacts and training data must also be shared across instances. One option is mounting `MODEL_STATE_FOLDER` and `TRAINING_DATA_FOLDER` on a Network File System (NFS) so every replica reads/writes the same storage. Another option is implementing a bucket-backed storage provider (for example AWS S3) that follows the existing storage interface, removing dependency on local disk and improving elasticity.
+
+For production operation, also consider:
+
+- running Alembic migrations as a one-time job per deployment
+- autoscaling API replicas based on CPU/latency
+- setting health/readiness checks at the load balancer
 
 ## 🏁 Roadmap
 
