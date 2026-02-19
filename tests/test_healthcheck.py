@@ -64,15 +64,15 @@ def test_healthcheck_returns_zero_metrics_when_no_requests():
     assert payload["inference_latency_ms"] == {"avg": 0.0, "p95": 0.0}
 
 
-def test_healthcheck_returns_zero_metrics_when_redis_read_fails():
+def test_healthcheck_returns_503_when_redis_read_fails():
     with patch(
         "app.services.healthcheck.LatencyRecord.get_latencies",
         side_effect=RuntimeError("redis unavailable"),
     ):
         response = client.get("/healthcheck")
 
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["series_trained"] == 2
-    assert payload["training_latency_ms"] == {"avg": 0.0, "p95": 0.0}
-    assert payload["inference_latency_ms"] == {"avg": 0.0, "p95": 0.0}
+    assert response.status_code == 503
+    assert (
+        response.json()["detail"]
+        == "Telemetry backend unavailable for healthcheck."
+    )
