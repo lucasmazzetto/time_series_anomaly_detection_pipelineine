@@ -76,8 +76,8 @@ class TrainService:
 
             return TrainResponse(
                 series_id=series_id,
-                message="Training successfully started.",
-                success=True,
+                version=str(version),
+                points_used=len(time_series.data),
             )
 
         # Preserve native Pydantic validation payloads for client-side field mapping
