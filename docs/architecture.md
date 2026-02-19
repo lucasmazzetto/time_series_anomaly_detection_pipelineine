@@ -62,6 +62,7 @@ data/                 # Persisted artifacts (models/data)
   - `TrainService` orchestrates training + metadata + artifact writes
   - `PredictService` resolves metadata/artifact and performs prediction
   - `HealthCheckService` reads Redis raw latencies and computes avg/P95
+    when telemetry is available; otherwise returns HTTP `503`
   - `PlotService` resolves training-data metadata/artifact and renders Plotly HTML
 - Database entities:
   - `AnomalyDetectionRecord` in `anomaly_detection_models`
@@ -90,9 +91,10 @@ data/                 # Persisted artifacts (models/data)
 ### `GET /healthcheck`
 
 1. Reads raw latency values from Redis lists (`train_latencies`, `predict_latencies`).
-2. Computes average and P95 in `HealthCheckService`.
-3. Counts trained series from `series_versions`.
-4. Returns latency metrics and trained-series counter.
+2. If Redis reads fail, returns HTTP `503` with telemetry-unavailable detail.
+3. Otherwise computes average and P95 in `HealthCheckService`.
+4. Counts trained series from `series_versions`.
+5. Returns latency metrics and trained-series counter.
 
 ### `GET /plot`
 
@@ -251,22 +253,28 @@ sequenceDiagram
     Client->>MW: GET /healthcheck
     MW->>Route: call_next(request)
     Route->>Service: healthcheck(session)
-    Service->>Cache: get_latencies(train)
-    Cache->>Redis: LRANGE train_latencies
-    Redis-->>Cache: train latency list
-    Cache-->>Service: train latencies
-    Service->>Cache: get_latencies(predict)
-    Cache->>Redis: LRANGE predict_latencies
-    Redis-->>Cache: predict latency list
-    Cache-->>Service: predict latencies
-    Service->>Service: compute avg + p95
-    Service->>Version: count_series(session)
-    Version->>DB: SELECT COUNT(series_id)
-    DB-->>Version: total trained series
-    Version-->>Service: series_count
-    Service-->>Route: HealthCheckResponse
-    Route-->>MW: 200 response
-    MW-->>Client: 200 response
+    alt Redis latency reads succeed
+        Service->>Cache: get_latencies(train)
+        Cache->>Redis: LRANGE train_latencies
+        Redis-->>Cache: train latency list
+        Cache-->>Service: train latencies
+        Service->>Cache: get_latencies(predict)
+        Cache->>Redis: LRANGE predict_latencies
+        Redis-->>Cache: predict latency list
+        Cache-->>Service: predict latencies
+        Service->>Service: compute avg + p95
+        Service->>Version: count_series(session)
+        Version->>DB: SELECT COUNT(series_id)
+        DB-->>Version: total trained series
+        Version-->>Service: series_count
+        Service-->>Route: HealthCheckResponse
+        Route-->>MW: 200 response
+        MW-->>Client: 200 response
+    else Redis latency reads fail
+        Service-->>Route: HTTPException 503
+        Route-->>MW: 503 response
+        MW-->>Client: 503 response
+    end
 ```
 
 ## Plot View Flow Diagram
@@ -323,16 +331,15 @@ sequenceDiagram
 - Training data path pattern:
   - `./data/data/<series_id>/<series_id>_data_v<version>.json`
 - Folder resolution precedence:
-  - params dict keys
-  - environment variables
-  - fallback defaults
+  - model state: `MODEL_STATE_FOLDER` -> `MODEL_FOLDER` -> default `./data/models`
+  - training data: `TRAINING_DATA_FOLDER` -> `DATA_FOLDER` -> default `./data/data`
 
 ## Configuration Defaults
 
 - `DATABASE_URL`: `postgresql+psycopg2://postgres:postgres@db:5432/postgres`
 - `MIN_TRAINING_DATA_POINTS`: `3`
 - `REDIS_URL`: `redis://redis:6379/0`
-- `LATENCY_HISTORY_LIMIT`: `10`
+- `LATENCY_HISTORY_LIMIT`: `100`
 - Storage fallback folders:
   - model state: `./data/models`
   - training data: `./data/data`
@@ -341,6 +348,7 @@ sequenceDiagram
 
 - Training:
   - validation/preflight errors -> HTTP `422`
+  - `ValidationError` and `ValueError` details use list-shaped payloads
   - unexpected runtime errors -> HTTP `500`
   - session rollback before re-raising failures
 - Prediction:
@@ -349,4 +357,4 @@ sequenceDiagram
   - missing `model_path` or unexpected errors -> HTTP `500`
 - Latency cache/healthcheck:
   - middleware Redis write failures are logged and ignored (request still succeeds)
-  - healthcheck Redis read failures return zeroed latency metrics
+  - healthcheck Redis read failures return HTTP `503`
