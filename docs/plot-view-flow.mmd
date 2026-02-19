@@ -10,7 +10,7 @@ sequenceDiagram
     participant FS as Local Filesystem
     participant Plotly as Plotly Renderer
 
-    Browser->>MW: GET /plot?series_id=...&version=vN
+    Browser->>MW: GET /plot?series_id=...[&version=vN]
     MW->>Route: call_next(request)
     Route->>Route: Validate SeriesId + Version
     Route->>Service: render_training_data(series_id, version)
