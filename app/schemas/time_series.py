@@ -7,19 +7,6 @@ from app.utils.env import get_min_training_data_points
 
 
 class TimeSeries(BaseModel):
-    """@brief Ordered collection of `DataPoint` samples for a single series.
-
-    @details Used by training request conversion (`app/schemas/train_data.py`),
-    model/trainer contracts (`app/core/model.py`, `app/core/trainer.py`),
-    storage (`app/storage/storage.py`), and training service flows
-    (`app/services/train_service.py`).
-
-    @note Validation rules:
-    base validation enforces non-empty, minimum 2 points and strictly
-    increasing timestamps; `validate_for_training()` additionally enforces
-    configured minimum sample size and rejects constant-only values.
-    """
-
     data: Sequence[DataPoint] = Field(
         ...,
         description="List of datapoints, ordered in time, of subsequent measurements of some quantity",
@@ -27,7 +14,10 @@ class TimeSeries(BaseModel):
 
     @model_validator(mode="after")
     def validate_series_shape(self) -> "TimeSeries":
-        """@brief Validate generic time-series structure constraints."""
+        """@brief Validate generic time-series structure constraints.
+
+        @return Validated TimeSeries instance.
+        """
         if len(self.data) < 2:
             raise ValueError("TimeSeries must contain at least 2 data points.")
 
@@ -38,7 +28,10 @@ class TimeSeries(BaseModel):
         return self
 
     def validate_for_training(self) -> "TimeSeries":
-        """@brief Apply training preflight validation rules."""
+        """@brief Apply training preflight validation rules.
+
+        @return Validated TimeSeries instance ready for training.
+        """
         min_points = get_min_training_data_points()
 
         if len(self.data) < min_points:

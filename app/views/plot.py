@@ -13,7 +13,12 @@ router = APIRouter(tags=["View"])
 @router.get("/plot", response_class=HTMLResponse)
 def plot(series_id: Annotated[SeriesId, Query()],
          version: Annotated[Version, Query()] = Version(version="0")) -> HTMLResponse:
-    """@brief Render the plot view for a series/version."""
+    """@brief Render the plot view for a series/version.
+
+    @param series_id Identifier of the series to render.
+    @param version Optional model version query object (`0` resolves latest).
+    @return HTMLResponse containing the rendered Plotly page.
+    """
     service = PlotService()
     html = service.render_training_data(series_id, version.to_int())
     return HTMLResponse(content=html)
