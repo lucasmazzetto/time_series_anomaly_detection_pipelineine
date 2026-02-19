@@ -22,7 +22,7 @@ app/
   db.py               # Engine/session configuration
   main.py             # App bootstrap and route registration
 docs/
-  architecture.md
+  ARCHITECTURE.md
   training-sequence.mmd
   fit-sequence.mmd
   healthcheck-sequence.mmd

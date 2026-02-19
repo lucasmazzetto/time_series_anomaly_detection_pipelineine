@@ -2,16 +2,17 @@
 
 This project provides a simple API for univariate time-series anomaly detection with support for multiple series, model versioning, artifact persistence, and predictions, designed as a clean and testable pipeline.
 
-Main frameworks and tools used:
+Main frameworks and tools used in this project:
 
-- `FastAPI`: HTTP API routes and request/response handling
-- `Pydantic`: schema validation and data parsing
-- `SQLAlchemy`: ORM and database access layer
-- `PostgreSQL`: metadata and model version persistence
-- `Redis`: latency telemetry storage
-- `NumPy`: baseline anomaly model statistics
-- `Plotly`: `/plot` HTML visualization of training data
-- `Alembic`: database schema migrations
+> [!Frameworks and tools]
+> - [FastAPI](https://fastapi.tiangolo.com/): HTTP API routes and request/response handling
+> - [Pydantic](https://docs.pydantic.dev/): schema validation and data parsing
+> - [SQLAlchemy](https://www.sqlalchemy.org/): ORM and database access layer
+> - [PostgreSQL](https://www.postgresql.org/): metadata and model version persistence
+> - [Redis](https://redis.io/): latency telemetry storage
+> - [NumPy](https://numpy.org/): baseline anomaly model statistics
+> - [Plotly](https://plotly.com/python/): `/plot` HTML visualization of training data
+> - [Alembic](https://alembic.sqlalchemy.org/): database schema migrations
 
 ## 🛠️ Setup
 
@@ -103,7 +104,7 @@ curl http://localhost:8000/healthcheck
 
 Detailed architecture and flow documentation:
 
-- Architecture: [docs/architecture.md](docs/architecture.md)
+- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Training sequence: [docs/training-sequence.mmd](docs/training-sequence.mmd)
 - Fit sequence: [docs/fit-sequence.mmd](docs/fit-sequence.mmd)
 - Healthcheck sequence: [docs/healthcheck-sequence.mmd](docs/healthcheck-sequence.mmd)
@@ -155,3 +156,9 @@ Default environment variables from `.env.example`:
 | `MODEL_FOLDER` | `./data/models` | Backward-compatible alias for model folder |
 | `TRAINING_DATA_FOLDER` | `./data/data` | Folder for persisted training datasets |
 | `DATA_FOLDER` | `./data/data` | Backward-compatible alias for data folder |
+
+## 🏁 Roadmap
+
+The next improvements required to make this project more robust are documented in the roadmap and are currently on the radar:
+
+- [docs/ROADMAP.md](docs/ROADMAP.md)
