@@ -5,7 +5,11 @@ from pydantic import BeforeValidator
 
 
 def _validate_series_id(series_id: object) -> str:
-    """@brief Validate and normalize series identifier input."""
+    """@brief Validate and normalize series identifier input.
+
+    @param series_id Raw series identifier to validate.
+    @return Normalized series identifier string.
+    """
     if isinstance(series_id, bool):
         raise ValueError("series_id must be a string.")
 

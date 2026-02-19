@@ -82,9 +82,8 @@ class PredictService:
         # Already a DataPoint: Pydantic validation already happened at creation time
         return payload
 
-    def predict(
-        self, series_id: str, version: int, payload: PredictData | DataPoint
-    ) -> PredictResponse:
+    def predict(self, series_id: str, version: int,
+                payload: PredictData | DataPoint) -> PredictResponse:
         """@brief Predict anomaly status for a single data point.
 
         @description Validates payload and inputs, resolves model metadata,

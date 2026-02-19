@@ -16,11 +16,8 @@ from app.storage.local_storage import LocalStorage
 router = APIRouter(tags=["Training"])
 
 @router.post("/fit/{series_id}", response_model=TrainResponse)
-def train(
-    series_id: Annotated[SeriesId, Path()],
-    payload: TrainData,
-    session: Session = Depends(get_session),
-) -> TrainResponse:
+def train(series_id: Annotated[SeriesId, Path()],
+          payload: TrainData, session: Session = Depends(get_session)) -> TrainResponse:
     """@brief Start training for a series and persist its artifacts.
 
     @param series_id Identifier of the series to train.
