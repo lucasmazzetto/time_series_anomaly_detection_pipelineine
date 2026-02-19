@@ -126,8 +126,8 @@ def test_fit_endpoint_rejects_constant_values():
 
     assert response.status_code == 422
     detail = response.json()["detail"]
-    assert isinstance(detail, str)
-    assert "constant" in detail.lower()
+    assert isinstance(detail, list)
+    assert "constant" in detail[0]["msg"].lower()
 
 
 def test_fit_endpoint_rejects_non_numeric_values():

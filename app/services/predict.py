@@ -7,6 +7,7 @@ from app.storage.storage import Storage
 from app.schemas.data_point import DataPoint
 from app.schemas.predict_data import PredictData
 from app.schemas.predict_response import PredictResponse
+from app.utils.error import value_error_details
 
 
 class PredictService:
@@ -110,7 +111,7 @@ class PredictService:
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=str(exc),
+                detail=value_error_details(exc),
             ) from exc
 
         self._validate_predict_inputs(series_id, version)

@@ -8,6 +8,7 @@ from app.storage.storage import Storage
 from app.schemas.time_series import TimeSeries
 from app.schemas.train_data import TrainData
 from app.schemas.train_response import TrainResponse
+from app.utils.error import value_error_details
 
 
 class TrainService:
@@ -92,7 +93,7 @@ class TrainService:
             self._session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=str(exc),
+                detail=value_error_details(exc),
             ) from exc
         # Re-raise expected HTTP failures after transaction rollback
         except HTTPException:
