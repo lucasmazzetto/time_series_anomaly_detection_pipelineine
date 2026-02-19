@@ -1,5 +1,6 @@
 import math
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.latency import LatencyRecord
@@ -55,9 +56,11 @@ class HealthCheckService:
         try:
             train_latencies = self._latency_record.get_latencies("train")
             predict_latencies = self._latency_record.get_latencies("predict")
-        except Exception:
-            train_latencies = []
-            predict_latencies = []
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Telemetry backend unavailable for healthcheck.",
+            ) from exc
 
         series_count = SeriesVersionRecord.count_series(self._session)
         

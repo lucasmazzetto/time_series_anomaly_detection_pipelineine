@@ -60,8 +60,8 @@ def test_train_success_saves_state_and_data():
 
     assert result == TrainResponse(
         series_id=series_id,
-        message="Training successfully started.",
-        success=True,
+        version="7",
+        points_used=3,
     )
     trainer.train.assert_called_once_with(payload)
     build_mock.assert_called_once_with(

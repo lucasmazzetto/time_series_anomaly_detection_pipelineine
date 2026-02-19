@@ -46,8 +46,8 @@ def test_fit_endpoint():
         "app.api.train.TrainService.train",
         return_value=TrainResponse(
             series_id=series_id,
-            message="Training successfully started.",
-            success=True,
+            version="1",
+            points_used=6,
         ),
     ):
         response = client.post(f"/fit/{series_id}", json=payload)
@@ -55,8 +55,8 @@ def test_fit_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert data["series_id"] == series_id
-    assert data["success"] is True
-    assert data["message"] == "Training successfully started."
+    assert data["version"] == "1"
+    assert data["points_used"] == 6
 
 
 def test_fit_endpoint_validation_failure():
@@ -126,8 +126,8 @@ def test_fit_endpoint_rejects_constant_values():
 
     assert response.status_code == 422
     detail = response.json()["detail"]
-    assert isinstance(detail, str)
-    assert "constant" in detail.lower()
+    assert isinstance(detail, list)
+    assert "constant" in detail[0]["msg"].lower()
 
 
 def test_fit_endpoint_rejects_non_numeric_values():

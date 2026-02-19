@@ -13,7 +13,7 @@ from app.core.trainer import AnomalyDetectionTrainer
 from app.core.simple_model import SimpleModel
 from app.storage.local_storage import LocalStorage
 
-router = APIRouter(tags=["train"])
+router = APIRouter(tags=["Training"])
 
 @router.post("/fit/{series_id}", response_model=TrainResponse)
 def train(
