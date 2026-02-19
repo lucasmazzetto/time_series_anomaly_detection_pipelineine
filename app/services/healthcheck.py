@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.database.latency import LatencyRecord
 from app.database.series_version import SeriesVersionRecord
-from app.schemas.healthcheck import HealthCheckResponse, Metrics
+from app.schemas.health_check_response import HealthCheckResponse
+from app.schemas.metrics import Metrics
 
 
 class HealthCheckService:

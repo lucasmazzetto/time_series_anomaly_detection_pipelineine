@@ -1,9 +1,6 @@
 from pydantic import BaseModel
 
-
-class Metrics(BaseModel):
-    avg: float
-    p95: float
+from app.schemas.metrics import Metrics
 
 
 class HealthCheckResponse(BaseModel):
