@@ -1,6 +1,8 @@
 # Anomaly Detection API Architecture
 
-## Scope
+This project provides an API for univariate time-series anomaly detection across multiple series, supporting a full lifecycle: training from historical data, persisting versioned models, and serving predictions. The architecture separates concerns into API (validation and contracts), services (orchestration and error mapping), core (model and trainer abstractions), and persistence (PostgreSQL metadata, Redis telemetry, and filesystem artifacts).
+
+## 🎯 Scope
 
 This document describes the current project structure and runtime flow for:
 - `POST /fit/{series_id}`
@@ -8,7 +10,7 @@ This document describes the current project structure and runtime flow for:
 - `GET /healthcheck`
 - `GET /plot`
 
-## Project Structure
+## 🗂️ Project Structure
 
 ```text
 app/
@@ -21,55 +23,45 @@ app/
   database/           # ORM entities and query helpers
   db.py               # Engine/session configuration
   main.py             # App bootstrap and route registration
-docs/
-  ARCHITECTURE.md
-  training-sequence.mmd
-  fit-sequence.mmd
-  healthcheck-sequence.mmd
-  plot-view-flow.mmd
-migrations/
-  versions/           # Alembic schema migrations
-tests/                # API, service, schema, core and repository tests
-data/                 # Persisted artifacts (models/data)
 ```
 
-## Layer Responsibilities
+## 🧱 Layer Responsibilities
 
-- API layer (`app/api/*.py`)
+- **API layer** (`app/api/*.py`):
   - Validates path/query/body input with Pydantic/FastAPI
   - Instantiates service objects and returns typed responses
-- Service layer (`app/services/*.py`)
+- **Service layer** (`app/services/*.py`):
   - Contains use-case logic and exception mapping to HTTP status codes
-- Core layer (`app/core/*.py`)
+- **Core layer** (`app/core/*.py`):
   - Model contract (`Model`), trainer contract (`Trainer`), and `SimpleModel`
-- Schema layer (`app/schemas/*.py`)
+- **Schema layer** (`app/schemas/*.py`):
   - Input validation and conversion (`TrainData -> TimeSeries`, `PredictData -> DataPoint`)
-- Persistence layer
+- **Persistence layer**:
   - Database metadata: `app/database/*.py`
   - Redis latency cache access: `app/database/latency.py`
   - Artifact storage: `app/storage/local_storage.py`
   - Session lifecycle: `app/db.py`
-- Middleware (`app/middleware/latency.py`)
+- **Middleware** (`app/middleware/latency.py`):
   - Tracks latency for successful `/fit/*` and `/predict/*` requests
   - Stores raw latency samples in Redis (bounded history via list trim)
 
-## Runtime Components
+## 🧩 Runtime Components
 
-- App bootstrap: `app/main.py`
+- **App bootstrap**: `app/main.py`
   - Registers routers: train, predict, healthcheck, plot
   - Attaches middleware: `track_request_latency`
-- Services:
+- **Services**:
   - `TrainService` orchestrates training + metadata + artifact writes
   - `PredictService` resolves metadata/artifact and performs prediction
   - `HealthCheckService` reads Redis raw latencies and computes avg/P95
     when telemetry is available; otherwise returns HTTP `503`
   - `PlotService` resolves training-data metadata/artifact and renders Plotly HTML
-- Database entities:
+- **Database entities**:
   - `AnomalyDetectionRecord` in `anomaly_detection_models`
   - `SeriesVersionRecord` in `series_versions`
   - `LatencyRecord` in Redis lists (`train_latencies`, `predict_latencies`)
 
-## Endpoint Flows
+## 🔀 Endpoint Flows
 
 ### `POST /fit/{series_id}`
 
@@ -103,7 +95,7 @@ data/                 # Persisted artifacts (models/data)
 3. Service loads persisted training data from local storage.
 4. Service renders a Plotly bar chart and returns HTML.
 
-## Training Sequence Diagram
+## 📊 Training Sequence Diagram
 
 The same diagram is also available at `docs/training-sequence.mmd`.
 An equivalent copy focused on `/fit` naming is available at `docs/fit-sequence.mmd`.
@@ -165,15 +157,7 @@ sequenceDiagram
     MW-->>Client: 200 response
 ```
 
-## Validation Rules
-
-- `SeriesId`: non-empty, trimmed, regex `[A-Za-z0-9._-]+`, rejects `..`
-- `TrainData`: non-negative integer timestamps, finite numeric values, same length arrays
-- `TimeSeries`: at least 2 points, strictly increasing timestamps
-- `PredictData`: timestamp is non-empty digits-only string, value is finite numeric
-- `Version`: accepts digits with optional `v`/`V` prefix
-
-## Fit Sequence Diagram
+## 📊 Fit Sequence Diagram
 
 The same diagram is also available at `docs/fit-sequence.mmd`.
 
@@ -234,7 +218,7 @@ sequenceDiagram
     MW-->>Client: 200 response
 ```
 
-## Healthcheck Sequence Diagram
+## 📊 Healthcheck Sequence Diagram
 
 The same diagram is also available at `docs/healthcheck-sequence.mmd`.
 
@@ -277,7 +261,7 @@ sequenceDiagram
     end
 ```
 
-## Plot View Flow Diagram
+## 📊 Plot View Flow Diagram
 
 The same diagram is also available at `docs/plot-view-flow.mmd`.
 
@@ -313,48 +297,57 @@ sequenceDiagram
     MW-->>Browser: 200 text/html
 ```
 
-## Persistence and Versioning
+## 📊 Validation Rules
 
-- `anomaly_detection_models`
+- `SeriesId`: non-empty, trimmed, regex `[A-Za-z0-9._-]+`, rejects `..`
+- `TrainData`: non-negative integer timestamps, finite numeric values, same length arrays
+- `TimeSeries`: at least 2 points, strictly increasing timestamps
+- `PredictData`: timestamp is non-empty digits-only string, value is finite numeric
+- `Version`: accepts digits with optional `v`/`V` prefix
+
+
+## 💾 Persistence and Versioning
+
+- `anomaly_detection_models`:
   - primary key: `(series_id, version)`
   - stores `model_path`, `data_path`, `created_at`, `updated_at`
-- `series_versions`
+- `series_versions`:
   - primary key: `series_id`
   - stores `last_version`
-- Version increment strategy:
+- **Version increment strategy**:
   - PostgreSQL upsert with `RETURNING` to ensure atomic version allocation
 
-## Artifact Storage
+## 💿 Artifact Storage
 
-- Model state path pattern:
+- **Model state path pattern**:
   - `./data/models/<series_id>/<series_id>_model_v<version>.json`
-- Training data path pattern:
+- **Training data path pattern**:
   - `./data/data/<series_id>/<series_id>_data_v<version>.json`
-- Folder resolution precedence:
+- **Folder resolution precedence**:
   - model state: `MODEL_STATE_FOLDER` -> `MODEL_FOLDER` -> default `./data/models`
   - training data: `TRAINING_DATA_FOLDER` -> `DATA_FOLDER` -> default `./data/data`
 
-## Configuration Defaults
+## ⚙️ Configuration Defaults
 
 - `DATABASE_URL`: `postgresql+psycopg2://postgres:postgres@db:5432/postgres`
 - `MIN_TRAINING_DATA_POINTS`: `3`
 - `REDIS_URL`: `redis://redis:6379/0`
 - `LATENCY_HISTORY_LIMIT`: `100`
-- Storage fallback folders:
+- **Storage fallback folders**:
   - model state: `./data/models`
   - training data: `./data/data`
 
-## Error Behavior
+## ❌ Error Behavior
 
-- Training:
+- **Training**:
   - validation/preflight errors -> HTTP `422`
   - `ValidationError` and `ValueError` details use list-shaped payloads
   - unexpected runtime errors -> HTTP `500`
   - session rollback before re-raising failures
-- Prediction:
+- **Prediction**:
   - invalid inputs -> HTTP `422` or `400` (service defensive checks)
   - missing metadata/artifact -> HTTP `404`
   - missing `model_path` or unexpected errors -> HTTP `500`
-- Latency cache/healthcheck:
+- **Latency healthcheck**:
   - middleware Redis write failures are logged and ignored (request still succeeds)
   - healthcheck Redis read failures return HTTP `503`
