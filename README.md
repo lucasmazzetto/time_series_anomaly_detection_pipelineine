@@ -127,7 +127,7 @@ Detailed architecture and flow documentation:
 
 - Architecture: [docs/architecture.md](docs/architecture.md)
 - Training sequence: [docs/training-sequence.mmd](docs/training-sequence.mmd)
-- Fit sequence: [docs/fit-sequence.mmd](docs/fit-sequence.mmd)
+- Predict sequence: [docs/predict-sequence.mmd](docs/predict-sequence.mmd)
 - Healthcheck sequence: [docs/healthcheck-sequence.mmd](docs/healthcheck-sequence.mmd)
 - Plot flow: [docs/plot-view-flow.mmd](docs/plot-view-flow.mmd)
 
