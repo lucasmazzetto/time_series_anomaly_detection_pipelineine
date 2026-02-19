@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.schemas.healthcheck import HealthCheckResponse
+from app.schemas.health_check_response import HealthCheckResponse
 from app.services.healthcheck import HealthCheckService
 
 router = APIRouter(tags=["Health Check"])

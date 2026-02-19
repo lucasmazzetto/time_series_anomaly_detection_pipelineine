@@ -9,7 +9,7 @@ from app.schemas.train_data import TrainData
 from app.schemas.train_response import TrainResponse
 from app.services.train import TrainService
 
-from app.core.trainer import AnomalyDetectionTrainer
+from app.core.anomaly_detection_trainer import AnomalyDetectionTrainer
 from app.core.simple_model import SimpleModel
 from app.storage.local_storage import LocalStorage
 
