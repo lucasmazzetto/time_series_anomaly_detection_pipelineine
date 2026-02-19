@@ -11,24 +11,28 @@ from app.services.train import TrainService
 
 from app.core.anomaly_detection_trainer import AnomalyDetectionTrainer
 from app.core.simple_model import SimpleModel
-from app.storage.local_storage import LocalStorage
+from app.storage.storage import Storage
+from app.utils.storage import get_storage
 
 router = APIRouter(tags=["Training"])
 
 @router.post("/fit/{series_id}", response_model=TrainResponse)
 def train(series_id: Annotated[SeriesId, Path()],
-          payload: TrainData, session: Session = Depends(get_session)) -> TrainResponse:
+          payload: TrainData,
+          storage: Storage = Depends(get_storage),
+          session: Session = Depends(get_session)) -> TrainResponse:
     """@brief Start training for a series and persist its artifacts.
 
     @param series_id Identifier of the series to train.
     @param payload Training payload containing timestamps and values.
+    @param storage Storage adapter resolved from the configured backend.
     @param session Active database session for persistence.
     @return Training response payload describing the outcome.
     """
     service = TrainService(
         session=session, 
         trainer=AnomalyDetectionTrainer(model=SimpleModel()), 
-        storage=LocalStorage()
+        storage=storage
     )
     
     return service.train(series_id, payload)

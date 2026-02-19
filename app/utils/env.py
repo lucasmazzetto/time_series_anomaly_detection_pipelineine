@@ -77,7 +77,7 @@ def get_database_url() -> str:
 def get_latency_history_limit() -> int:
     """@brief Return max number of latency samples retained in Redis lists.
 
-    @return Integer history limit from `LATENCY_HISTORY_LIMIT` (default `500`).
+    @return Integer history limit from `LATENCY_HISTORY_LIMIT` (default `100`).
     """
     return int(os.getenv("LATENCY_HISTORY_LIMIT", "100"))
 
@@ -114,3 +114,79 @@ def get_training_data_folder() -> str:
     otherwise `./data/data`.
     """
     return _get_first_env(("TRAINING_DATA_FOLDER", "DATA_FOLDER"), "./data/data")
+
+
+def get_storage_backend() -> str:
+    """@brief Return configured artifact storage backend.
+
+    @return Backend identifier from `STORAGE_BACKEND` (`local` or `s3`).
+    @throws ValueError If backend is not supported.
+    """
+    backend = os.getenv("STORAGE_BACKEND", "local").strip().lower()
+    if backend not in {"local", "s3"}:
+        raise ValueError("STORAGE_BACKEND must be either 'local' or 's3'.")
+    return backend
+
+
+def get_aws_s3_bucket() -> str:
+    """@brief Return S3 bucket name for artifact persistence.
+
+    @return Non-empty bucket name from `AWS_S3_BUCKET`.
+    @throws ValueError If bucket is unset or empty.
+    """
+    bucket = os.getenv("AWS_S3_BUCKET", "").strip()
+    if not bucket:
+        raise ValueError("AWS_S3_BUCKET must be set when STORAGE_BACKEND is 's3'.")
+    return bucket
+
+
+def get_aws_s3_region() -> str:
+    """@brief Return AWS region used to create S3 client connections.
+
+    @return Region from `AWS_S3_REGION` (default `us-east-1`).
+    """
+    return os.getenv("AWS_S3_REGION", "us-east-1").strip()
+
+
+def get_aws_s3_prefix() -> str:
+    """@brief Return optional key prefix used for S3 object paths.
+
+    @return Prefix from `AWS_S3_PREFIX` (default empty string).
+    """
+    return os.getenv("AWS_S3_PREFIX", "").strip()
+
+
+def get_aws_s3_endpoint_url() -> str | None:
+    """@brief Return optional custom endpoint URL for S3-compatible APIs.
+
+    @return Endpoint URL from `AWS_S3_ENDPOINT_URL`, or None when unset.
+    """
+    value = os.getenv("AWS_S3_ENDPOINT_URL", "").strip()
+    return value or None
+
+
+def get_aws_access_key_id() -> str | None:
+    """@brief Return optional static AWS access key id.
+
+    @return Access key id from `AWS_ACCESS_KEY_ID`, or None when unset.
+    """
+    value = os.getenv("AWS_ACCESS_KEY_ID", "").strip()
+    return value or None
+
+
+def get_aws_secret_access_key() -> str | None:
+    """@brief Return optional static AWS secret access key.
+
+    @return Secret access key from `AWS_SECRET_ACCESS_KEY`, or None when unset.
+    """
+    value = os.getenv("AWS_SECRET_ACCESS_KEY", "").strip()
+    return value or None
+
+
+def get_aws_session_token() -> str | None:
+    """@brief Return optional AWS session token.
+
+    @return Session token from `AWS_SESSION_TOKEN`, or None when unset.
+    """
+    value = os.getenv("AWS_SESSION_TOKEN", "").strip()
+    return value or None
