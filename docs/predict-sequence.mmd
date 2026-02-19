@@ -1,0 +1,47 @@
+sequenceDiagram
+    autonumber
+    actor Client
+    participant MW as Latency Middleware
+    participant Route as FastAPI /predict/{series_id}
+    participant Service as PredictService
+    participant Model as SimpleModel
+    participant Record as AnomalyDetectionRecord
+    participant DB as PostgreSQL
+    participant Cache as LatencyRecord
+    participant Redis as Redis
+    participant Store as LocalStorage
+    participant FS as Local Filesystem
+
+    Client->>MW: POST /predict/{series_id}?version=...
+    MW->>Route: call_next(request)
+    Route->>Route: Validate SeriesId + PredictData + Version
+    Route->>Route: version.to_int()
+    Route->>Service: predict(series_id, version_int, payload)
+
+    Service->>Service: _to_data_point(payload)
+    Service->>Service: _validate_predict_inputs(series_id, version)
+
+    alt version == 0 (latest)
+        Service->>Record: get_last_model(session, series_id)
+    else version > 0
+        Service->>Record: get_model_version(session, series_id, version)
+    end
+
+    Record->>DB: SELECT model metadata
+    DB-->>Record: model_path + version
+    Record-->>Service: metadata dict
+
+    Service->>Store: load_state(model_path)
+    Store->>FS: read model JSON
+    FS-->>Store: ModelState payload
+    Store-->>Service: ModelState
+
+    Service->>Model: load(state)
+    Service->>Model: predict(data_point)
+    Model-->>Service: anomaly(bool)
+
+    Service-->>Route: PredictResponse
+    Route-->>MW: 200 response
+    MW->>Cache: push_latency(predict, elapsed_ms)
+    Cache->>Redis: RPUSH + LTRIM
+    MW-->>Client: 200 response

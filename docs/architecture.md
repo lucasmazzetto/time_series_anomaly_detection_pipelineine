@@ -107,7 +107,6 @@ This section describes the end-to-end behavior of each public endpoint, from req
 ## 📊 Training Sequence Diagram
 
 The same diagram is also available at `docs/training-sequence.mmd`.
-An equivalent copy focused on `/fit` naming is available at `docs/fit-sequence.mmd`.
 
 ```mermaid
 sequenceDiagram
@@ -166,63 +165,56 @@ sequenceDiagram
     MW-->>Client: 200 response
 ```
 
-## 📊 Fit Sequence Diagram
+## 📊 Predict Sequence Diagram
 
-The same diagram is also available at `docs/fit-sequence.mmd`.
+The same diagram is also available at `docs/predict-sequence.mmd`.
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Client
     participant MW as Latency Middleware
-    participant Route as FastAPI /fit/{series_id}
-    participant Service as TrainService
-    participant Trainer as AnomalyDetectionTrainer
+    participant Route as FastAPI /predict/{series_id}
+    participant Service as PredictService
     participant Model as SimpleModel
     participant Record as AnomalyDetectionRecord
-    participant Version as SeriesVersionRecord
     participant DB as PostgreSQL
     participant Cache as LatencyRecord
     participant Redis as Redis
     participant Store as LocalStorage
     participant FS as Local Filesystem
 
-    Client->>MW: POST /fit/{series_id}
+    Client->>MW: POST /predict/{series_id}?version=...
     MW->>Route: call_next(request)
-    Route->>Route: Validate SeriesId + TrainData
-    Route->>Service: train(series_id, payload)
-    Service->>Service: _to_time_series + validate_for_training()
+    Route->>Route: Validate SeriesId + PredictData + Version
+    Route->>Route: version.to_int()
+    Route->>Service: predict(series_id, version_int, payload)
 
-    Service->>Trainer: train(time_series)
-    Trainer->>Model: fit(data, callback)
-    Trainer->>Model: save()
-    Model-->>Trainer: ModelState
-    Trainer-->>Service: ModelState
+    Service->>Service: _to_data_point(payload)
+    Service->>Service: _validate_predict_inputs(series_id, version)
 
-    Service->>Record: build(series_id, version=None, paths=None)
-    Service->>Record: save(session, record)
-    Record->>Version: next_version(session, series_id)
-    Version->>DB: INSERT .. ON CONFLICT .. RETURNING
-    DB-->>Version: assigned version
-    Version-->>Record: version
-    Record->>DB: INSERT + FLUSH
-    DB-->>Record: metadata persisted
+    alt version == 0 (latest)
+        Service->>Record: get_last_model(session, series_id)
+    else version > 0
+        Service->>Record: get_model_version(session, series_id, version)
+    end
 
-    Service->>Store: save_state(series_id, version, state)
-    Store->>FS: write model JSON
-    FS-->>Store: model_path
+    Record->>DB: SELECT model metadata
+    DB-->>Record: model_path + version
+    Record-->>Service: metadata dict
 
-    Service->>Store: save_data(series_id, version, time_series)
-    Store->>FS: write training data JSON
-    FS-->>Store: data_path
+    Service->>Store: load_state(model_path)
+    Store->>FS: read model JSON
+    FS-->>Store: ModelState payload
+    Store-->>Service: ModelState
 
-    Service->>Record: update(model_path, data_path)
-    Service->>Record: commit()
-    Record->>DB: COMMIT
+    Service->>Model: load(state)
+    Service->>Model: predict(data_point)
+    Model-->>Service: anomaly(bool)
 
-    Service-->>Route: TrainResponse
+    Service-->>Route: PredictResponse
     Route-->>MW: 200 response
-    MW->>Cache: push_latency(train, elapsed_ms)
+    MW->>Cache: push_latency(predict, elapsed_ms)
     Cache->>Redis: RPUSH + LTRIM
     MW-->>Client: 200 response
 ```
