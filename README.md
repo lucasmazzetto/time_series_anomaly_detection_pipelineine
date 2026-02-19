@@ -60,7 +60,7 @@ Main API flow:
 1. Train a series with `POST /fit/{series_id}`
 2. Predict anomalies with `POST /predict/{series_id}` (optional query string: `?version=<number>`; default is latest)
 3. Check service and metrics with `GET /healthcheck`
-4. Visualize training data with `GET /plot?series_id=<id>&version=<number>` (query string required; open this endpoint in a browser to see the rendered chart)
+4. Visualize training data with `GET /plot?series_id=<id>[&version=<number>]` (`series_id` query is required, `version` is optional; open this endpoint in a browser to see the rendered chart)
 
 ### Example usage
 

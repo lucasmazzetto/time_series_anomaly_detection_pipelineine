@@ -11,7 +11,8 @@ sequenceDiagram
 
     Client->>MW: GET /healthcheck
     MW->>Route: call_next(request)
-    Route->>Service: healthcheck(session)
+    Route->>Service: HealthCheckService(session)
+    Route->>Service: healthcheck()
     alt Redis latency reads succeed
         Service->>Cache: get_latencies(train)
         Cache->>Redis: LRANGE train_latencies

@@ -2,7 +2,7 @@
 
 This project provides an API for univariate time-series anomaly detection across multiple series, supporting a full lifecycle: training from historical data, persisting versioned models, and serving predictions. The architecture separates concerns into API (validation and contracts), services (orchestration and error mapping), core (model and trainer abstractions), and persistence (PostgreSQL metadata, Redis telemetry, and filesystem artifacts).
 
-The codebase is designed around dependency injection: routes import a service and pass dependencies into it (such as model, trainer, storage, and session). This keeps components swappable, easier to test, and less coupled to specific infrastructure implementations.
+The codebase is designed around dependency injection: routes import a service and pass dependencies into it (such as model, trainer, storage, and session). Some services also provide default adapters when dependencies are not explicitly passed (for example in the plot flow). This keeps components swappable, easier to test, and less coupled to specific infrastructure implementations.
 
 ## 🎯 Scope
 
@@ -245,7 +245,8 @@ sequenceDiagram
 
     Client->>MW: GET /healthcheck
     MW->>Route: call_next(request)
-    Route->>Service: healthcheck(session)
+    Route->>Service: HealthCheckService(session)
+    Route->>Service: healthcheck()
     alt Redis latency reads succeed
         Service->>Cache: get_latencies(train)
         Cache->>Redis: LRANGE train_latencies
@@ -287,7 +288,7 @@ sequenceDiagram
     participant FS as Local Filesystem
     participant Plotly as Plotly Renderer
 
-    Browser->>MW: GET /plot?series_id=...&version=vN
+    Browser->>MW: GET /plot?series_id=...[&version=vN]
     MW->>Route: call_next(request)
     Route->>Route: Validate SeriesId + Version
     Route->>Service: render_training_data(series_id, version)
@@ -370,3 +371,5 @@ Error handling maps validation, domain, and infrastructure failures into stable 
 - **Latency healthcheck**:
   - middleware Redis write failures are logged and ignored (request still succeeds)
   - healthcheck Redis read failures return HTTP `503`
+- **Global API behavior**:
+  - database connection pool timeout is mapped to HTTP `503` at the app level
