@@ -1,0 +1,232 @@
+from datetime import datetime, timezone
+from typing import Any
+
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import object_session
+
+from sqlalchemy import Column, DateTime, Integer, String
+
+from app.db import Base
+from app.database.series_version import SeriesVersionRecord
+
+
+class AnomalyDetectionRecord(Base):
+    __tablename__ = "anomaly_detection_models"
+
+    series_id = Column(String, primary_key=True)
+    version = Column(Integer, primary_key=True)
+    model_path = Column(String, nullable=True)
+    data_path = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False)
+    updated_at = Column(DateTime(timezone=True), nullable=False)
+
+    @staticmethod
+    def _timestamp() -> datetime:
+        """
+        @brief Provide a UTC timestamp for record creation/update.
+
+        @return A timezone-aware UTC datetime.
+        """
+        return datetime.now(timezone.utc)
+
+    @classmethod
+    def build(cls, series_id: str, version: int | None = None,
+              model_path: str | None = None,
+              data_path: str | None = None) -> "AnomalyDetectionRecord":
+        """
+        @brief Build a new record with consistent timestamps.
+
+        @param series_id The series identifier for the model.
+        @param version The version to persist; if None, it will be assigned on save.
+        @param model_path The persisted model path, if already known.
+        @param data_path The persisted data path, if already known.
+        @return A new AnomalyDetectionRecord instance (not yet persisted).
+        """
+        now = cls._timestamp()
+        return cls(
+            series_id=series_id,
+            version=version,
+            model_path=model_path,
+            data_path=data_path,
+            created_at=now,
+            updated_at=now,
+        )
+
+    @staticmethod
+    def save(session: Session, model: "AnomalyDetectionRecord") -> int:
+        """
+        @brief Persist a record and return its version.
+
+        @description If the version is missing, it is assigned atomically via
+        `SeriesVersionRecord` to avoid race conditions under concurrent inserts.
+        
+        @param session Active SQLAlchemy session for the transaction.
+        @param model The record to be saved.
+        @return The version stored for this record.
+        """
+        if model.version is None:
+            model.version = SeriesVersionRecord.next_version(
+                session, model.series_id
+            )
+        session.add(model)
+        session.flush()
+        return int(model.version)
+
+    @staticmethod
+    def get_last_model(
+        session: Session, series_id: str
+    ) -> dict[str, Any]:
+        """
+        @brief Retrieve the latest persisted model row for a series.
+
+        @param session Active SQLAlchemy session for the query.
+        @param series_id The series identifier.
+        @return Serialized dictionary for the latest model row.
+        """
+        model = (
+            session.query(AnomalyDetectionRecord)
+            .filter(AnomalyDetectionRecord.series_id == series_id)
+            .order_by(AnomalyDetectionRecord.version.desc())
+            .first()
+        )
+
+        if model is None:
+            raise ValueError(f"No model found for series_id '{series_id}'.")
+
+        return model.to_dict()
+
+    @staticmethod
+    def get_model_version(
+        session: Session, series_id: str, version: int
+    ) -> dict[str, Any]:
+        """
+        @brief Retrieve a specific persisted model row for a series/version.
+
+        @param session Active SQLAlchemy session for the query.
+        @param series_id The series identifier.
+        @param version The desired model version.
+        @return Serialized dictionary for the requested model row.
+        """
+        model = (
+            session.query(AnomalyDetectionRecord)
+            .filter(
+                AnomalyDetectionRecord.series_id == series_id,
+                AnomalyDetectionRecord.version == version,
+            )
+            .first()
+        )
+
+        if model is None:
+            raise ValueError(
+                f"Model version '{version}' not found for series_id '{series_id}'."
+            )
+
+        return model.to_dict()
+
+    @staticmethod
+    def get_last_training_data(
+        session: Session, series_id: str
+    ) -> dict[str, Any]:
+        """
+        @brief Retrieve latest persisted training-data metadata for a series.
+
+        @param session Active SQLAlchemy session for the query.
+        @param series_id The series identifier.
+        @return Serialized dictionary for the latest model row.
+        @throws ValueError If no row exists for the provided series id.
+        """
+        model = (
+            session.query(AnomalyDetectionRecord)
+            .filter(AnomalyDetectionRecord.series_id == series_id)
+            .order_by(AnomalyDetectionRecord.version.desc())
+            .first()
+        )
+
+        if model is None:
+            raise ValueError(f"No training data found for series_id '{series_id}'.")
+
+        return model.to_dict()
+
+    @staticmethod
+    def get_training_data(
+        session: Session, series_id: str, version: int
+    ) -> dict[str, Any]:
+        """
+        @brief Retrieve specific training-data metadata for series/version.
+
+        @param session Active SQLAlchemy session for the query.
+        @param series_id The series identifier.
+        @param version The desired model version.
+        @return Serialized dictionary for the requested model row.
+        @throws ValueError If the requested series/version row does not exist.
+        """
+        model = (
+            session.query(AnomalyDetectionRecord)
+            .filter(
+                AnomalyDetectionRecord.series_id == series_id,
+                AnomalyDetectionRecord.version == version,
+            )
+            .first()
+        )
+
+        if model is None:
+            raise ValueError(
+                f"Training data version '{version}' not found for series_id '{series_id}'."
+            )
+
+        return model.to_dict()
+    
+    def touch(self) -> None:
+        """
+        @brief Update the in-memory `updated_at` timestamp.
+
+        @return None
+        """
+        self.updated_at = datetime.now(timezone.utc)
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        @brief Serialize the record into a dictionary.
+
+        @return Dictionary representation of the database row.
+        """
+        return {
+            "series_id": self.series_id,
+            "version": int(self.version),
+            "model_path": self.model_path,
+            "data_path": self.data_path,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+    
+    def update(self, *, model_path: str | None, data_path: str | None) -> None:
+        """
+        @brief Update storage paths in the current transaction.
+
+        @param model_path New model path to store.
+        @param data_path New data path to store.
+        @return None
+        @throws RuntimeError If the record is detached from any session.
+        """
+        self.model_path = model_path
+        self.data_path = data_path
+        self.touch()
+        
+        session = object_session(self)
+
+        if session is None:
+            raise RuntimeError("AnomalyDetectionRecord is not attached to a session")
+        
+    def commit(self) -> None:
+        """
+        @brief Commit current transaction for this record's session.
+
+        @return None
+        @throws RuntimeError If the record is detached from any session.
+        """
+        session = object_session(self)
+
+        if session is None:
+            raise RuntimeError("AnomalyDetectionRecord is not attached to a session")
+
+        session.commit()

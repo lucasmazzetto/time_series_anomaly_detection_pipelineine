@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor Client
+    participant MW as Latency Middleware
+    participant Route as FastAPI /healthcheck
+    participant Service as HealthCheckService
+    participant Cache as LatencyRecord
+    participant Redis as Redis
+    participant Version as SeriesVersionRecord
+    participant DB as PostgreSQL
+
+    Client->>MW: GET /healthcheck
+    MW->>Route: call_next(request)
+    Route->>Service: HealthCheckService(session)
+    Route->>Service: healthcheck()
+    alt Redis latency reads succeed
+        Service->>Cache: get_latencies(train)
+        Cache->>Redis: LRANGE train_latencies
+        Redis-->>Cache: raw latency list
+        Cache-->>Service: train latencies
+        Service->>Cache: get_latencies(predict)
+        Cache->>Redis: LRANGE predict_latencies
+        Redis-->>Cache: raw latency list
+        Cache-->>Service: predict latencies
+        Service->>Service: compute avg + p95
+        Service->>Version: count_series(session)
+        Version->>DB: SELECT COUNT(series_id)
+        DB-->>Version: total trained series
+        Version-->>Service: series_count
+        Service-->>Route: HealthCheckResponse
+        Route-->>MW: 200 response
+        MW-->>Client: 200 response
+    else Redis latency reads fail
+        Service-->>Route: HTTPException 503
+        Route-->>MW: 503 response
+        MW-->>Client: 503 response
+    end
