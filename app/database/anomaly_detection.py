@@ -30,13 +30,9 @@ class AnomalyDetectionRecord(Base):
         return datetime.now(timezone.utc)
 
     @classmethod
-    def build(
-        cls,
-        series_id: str,
-        version: int | None = None,
-        model_path: str | None = None,
-        data_path: str | None = None,
-    ) -> "AnomalyDetectionRecord":
+    def build(cls, series_id: str, version: int | None = None,
+              model_path: str | None = None,
+              data_path: str | None = None) -> "AnomalyDetectionRecord":
         """
         @brief Build a new record with consistent timestamps.
 

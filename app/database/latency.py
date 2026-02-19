@@ -15,12 +15,8 @@ class LatencyRecord:
         "predict": "predict_latencies",
     }
 
-    def __init__(
-        self,
-        redis_client: Redis | None = None,
-        redis_url: str | None = None,
-        history_limit: int | None = None,
-    ) -> None:
+    def __init__(self, redis_client: Redis | None = None,
+                 redis_url: str | None = None, history_limit: int | None = None) -> None:
         """@brief Initialize Redis connectivity and latency retention settings.
 
         @description Creates or receives a Redis client and configures the

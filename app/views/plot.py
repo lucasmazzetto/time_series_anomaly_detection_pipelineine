@@ -11,10 +11,8 @@ router = APIRouter(tags=["View"])
 
 
 @router.get("/plot", response_class=HTMLResponse)
-def plot(
-    series_id: Annotated[SeriesId, Query()],
-    version: Annotated[Version, Query()] = Version(version="0"),
-) -> HTMLResponse:
+def plot(series_id: Annotated[SeriesId, Query()],
+         version: Annotated[Version, Query()] = Version(version="0")) -> HTMLResponse:
     """@brief Render the plot view for a series/version."""
     service = PlotService()
     html = service.render_training_data(series_id, version.to_int())
