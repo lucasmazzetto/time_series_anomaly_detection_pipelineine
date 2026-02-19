@@ -45,8 +45,8 @@ def test_latency_middleware_pushes_train_and_predict_for_2xx():
         "app.api.train.TrainService.train",
         return_value=TrainResponse(
             series_id=series_id,
-            message="Training successfully started.",
-            success=True,
+            version="1",
+            points_used=3,
         ),
     ), patch(
         "app.api.predict.PredictService.predict",
@@ -85,8 +85,8 @@ def test_latency_middleware_ignores_non_2xx_responses():
         "app.api.train.TrainService.train",
         return_value=TrainResponse(
             series_id=series_id,
-            message="Training successfully started.",
-            success=True,
+            version="1",
+            points_used=3,
         ),
     ):
         success_response = client.post(f"/fit/{series_id}", json=valid_payload)
@@ -112,8 +112,8 @@ def test_latency_middleware_swallow_redis_errors():
         "app.api.train.TrainService.train",
         return_value=TrainResponse(
             series_id=series_id,
-            message="Training successfully started.",
-            success=True,
+            version="1",
+            points_used=3,
         ),
     ):
         response = client.post(f"/fit/{series_id}", json=payload)
