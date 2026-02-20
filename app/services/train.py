@@ -8,7 +8,7 @@ from app.storage.storage import Storage
 from app.schemas.time_series import TimeSeries
 from app.schemas.train_data import TrainData
 from app.schemas.train_response import TrainResponse
-from app.utils.error import value_error_details
+from app.utils.error import validation_error_details, value_error_details
 
 
 class TrainService:
@@ -86,7 +86,7 @@ class TrainService:
             self._session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=exc.errors(),
+                detail=validation_error_details(exc),
             ) from exc
         # Domain/value preflight errors are returned as a generic 422 message
         except ValueError as exc:
