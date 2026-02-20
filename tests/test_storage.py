@@ -7,13 +7,17 @@ from app.storage.local_storage import LocalStorage
 from app.schemas.data_point import DataPoint
 from app.schemas.model_state import ModelState
 from app.schemas.time_series import TimeSeries
+from app.utils.env import get_min_training_data_points
 
 
 def _sample_series() -> TimeSeries:
+    min_points = get_min_training_data_points()
+    base_timestamp = 1_700_000_000
+
     return TimeSeries(
         data=[
-            DataPoint(timestamp=1_700_000_000, value=1.0),
-            DataPoint(timestamp=1_700_000_001, value=1.1),
+            DataPoint(timestamp=base_timestamp + i, value=1.0 + (i * 0.1))
+            for i in range(min_points)
         ]
     )
 
