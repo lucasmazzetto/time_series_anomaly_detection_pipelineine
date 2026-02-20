@@ -11,9 +11,8 @@ from app.schemas.time_series import TimeSeries
 
 
 class PlotService:
-    def __init__(
-        self, session: Session | None = None, storage: Storage | None = None
-    ) -> None:
+    def __init__(self, session: Session | None = None,
+                 storage: Storage | None = None) -> None:
         """@brief Initialize plotting service dependencies.
 
         @param session Active SQLAlchemy session. When omitted, a local

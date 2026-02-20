@@ -8,9 +8,8 @@ from app.schemas.time_series import TimeSeries
 
 class Model(ABC):
     @abstractmethod
-    def fit(
-        self, data: TimeSeries, callback: Optional[Callable[[Any], None]] = None
-    ) -> None:
+    def fit(self, data: TimeSeries,
+            callback: Optional[Callable[[Any], None]] = None) -> None:
         """@brief Fit the model on training data.
 
         @param data Training dataset.

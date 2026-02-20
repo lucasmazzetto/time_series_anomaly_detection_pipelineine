@@ -73,9 +73,7 @@ class AnomalyDetectionRecord(Base):
         return int(model.version)
 
     @staticmethod
-    def get_last_model(
-        session: Session, series_id: str
-    ) -> dict[str, Any]:
+    def get_last_model(session: Session, series_id: str) -> dict[str, Any]:
         """
         @brief Retrieve the latest persisted model row for a series.
 
@@ -96,9 +94,8 @@ class AnomalyDetectionRecord(Base):
         return model.to_dict()
 
     @staticmethod
-    def get_model_version(
-        session: Session, series_id: str, version: int
-    ) -> dict[str, Any]:
+    def get_model_version(session: Session, series_id: str,
+                          version: int) -> dict[str, Any]:
         """
         @brief Retrieve a specific persisted model row for a series/version.
 
@@ -124,9 +121,7 @@ class AnomalyDetectionRecord(Base):
         return model.to_dict()
 
     @staticmethod
-    def get_last_training_data(
-        session: Session, series_id: str
-    ) -> dict[str, Any]:
+    def get_last_training_data(session: Session, series_id: str) -> dict[str, Any]:
         """
         @brief Retrieve latest persisted training-data metadata for a series.
 
@@ -148,9 +143,8 @@ class AnomalyDetectionRecord(Base):
         return model.to_dict()
 
     @staticmethod
-    def get_training_data(
-        session: Session, series_id: str, version: int
-    ) -> dict[str, Any]:
+    def get_training_data(session: Session, series_id: str,
+                          version: int) -> dict[str, Any]:
         """
         @brief Retrieve specific training-data metadata for series/version.
 
