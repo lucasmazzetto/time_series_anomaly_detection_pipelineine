@@ -17,9 +17,8 @@ app.include_router(plot_router)
 
 
 @app.exception_handler(SQLAlchemyTimeoutError)
-async def handle_db_pool_timeout(
-    _request: Request, _exc: SQLAlchemyTimeoutError
-) -> JSONResponse:
+async def handle_db_pool_timeout(_request: Request,
+                                 _exc: SQLAlchemyTimeoutError) -> JSONResponse:
     """@brief Return a graceful 503 when database pool capacity is exhausted.
 
     @param _request Incoming request associated with the failure.

@@ -9,9 +9,7 @@ router = APIRouter(tags=["Health Check"])
 
 
 @router.get("/healthcheck", response_model=HealthCheckResponse)
-def healthcheck(
-    session: Session = Depends(get_session),
-) -> HealthCheckResponse:
+def healthcheck(session: Session = Depends(get_session)) -> HealthCheckResponse:
     """@brief Return API health metrics for training and inference.
 
     @param session Active SQLAlchemy session used to query trained series count.
