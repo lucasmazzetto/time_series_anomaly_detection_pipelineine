@@ -77,6 +77,27 @@ def test_fit_endpoint_validation_failure():
     assert response.status_code == 422
 
 
+def test_fit_endpoint_rejects_empty_payload_lists():
+    """@brief Ensure empty timestamps/values are returned as a 422 response.
+
+    @details Empty lists fail TimeSeries conversion preflight and must not
+    bubble into a 500 due to non-JSON-serializable error context objects.
+    """
+    series_id = "test_series_empty"
+    payload = {
+        "timestamps": [],
+        "values": [],
+    }
+
+    response = client.post(f"/fit/{series_id}", json=payload)
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert isinstance(detail, list)
+    msg = detail[0]["msg"].lower()
+    assert "at least" in msg and "data points" in msg
+
+
 def test_fit_endpoint_rejects_invalid_values():
     """@brief Verify the endpoint rejects invalid numeric entries like None or Infinity.
 
