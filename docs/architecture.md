@@ -19,6 +19,7 @@ This section provides a map of the repository organization so each module can be
 ```text
 app/
   api/        # FastAPI route handlers
+  views/      # FastAPI HTML view handlers (e.g. /plot)
   middleware/ # Request latency middleware
   services/   # Application use-cases
   core/       # Model, trainer abstractions and implementation
@@ -33,7 +34,7 @@ app/
 
 The system follows a layered architecture where each layer has a clear responsibility and communicates through boundaries. Request flow moves from API to services, then to core logic and persistence adapters, which keeps business rules centralized and infrastructure concerns decoupled from HTTP handling.
 
-- **API layer** (`app/api/*.py`):
+- **API layer** (`app/api/*.py`, `app/views/*.py`):
   - Validates path/query/body input with Pydantic/FastAPI.
   - Instantiates service objects and returns typed responses.
 - **Service layer** (`app/services/*.py`):
@@ -305,7 +306,7 @@ Validation is applied in layers to reject invalid input as early as possible and
 
 - `SeriesId`: non-empty, trimmed, regex `[A-Za-z0-9._-]+`, rejects `..`
 - `TrainData`: non-negative integer timestamps, finite numeric values, same length arrays
-- `TimeSeries`: at least 2 points, strictly increasing timestamps
+- `TimeSeries`: at least `MIN_TRAINING_DATA_POINTS`, strictly increasing timestamps
 - `PredictData`: timestamp is non-empty digits-only string, value is finite numeric
 - `Version`: accepts digits with optional `v`/`V` prefix
 

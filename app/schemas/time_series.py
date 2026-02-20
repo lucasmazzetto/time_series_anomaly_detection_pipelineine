@@ -18,8 +18,11 @@ class TimeSeries(BaseModel):
 
         @return Validated TimeSeries instance.
         """
-        if len(self.data) < 2:
-            raise ValueError("TimeSeries must contain at least 2 data points.")
+        min_points = get_min_training_data_points()
+        if len(self.data) < min_points:
+            raise ValueError(
+                f"TimeSeries must contain at least {min_points} data points."
+            )
 
         timestamps = [point.timestamp for point in self.data]
         if any(curr <= prev for prev, curr in zip(timestamps, timestamps[1:])):

@@ -7,7 +7,7 @@ from app.storage.storage import Storage
 from app.schemas.data_point import DataPoint
 from app.schemas.predict_data import PredictData
 from app.schemas.predict_response import PredictResponse
-from app.utils.error import value_error_details
+from app.utils.error import validation_error_details, value_error_details
 
 
 class PredictService:
@@ -104,7 +104,7 @@ class PredictService:
         except ValidationError as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=exc.errors(),
+                detail=validation_error_details(exc),
             ) from exc
         # Domain/value conversion errors are returned as a generic 422 message
         except ValueError as exc:
